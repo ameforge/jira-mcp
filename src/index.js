@@ -3,6 +3,7 @@ import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
 import pkg from "../package.json" with {type: "json"};
 import {registerAddAttachment} from "./tools/attachment/add.js";
 import {registerDeleteAttachment} from "./tools/attachment/delete.js";
+import {registerDownloadAttachment} from "./tools/attachment/download.js";
 import {registerAddComment} from "./tools/comment/add.js";
 import {registerDeleteComment} from "./tools/comment/delete.js";
 import {registerGetComment} from "./tools/comment/get.js";
@@ -44,7 +45,8 @@ registerRemoveWatcher(server);
 registerMoveToSprint(server);
 registerAddAttachment(server);
 registerDeleteAttachment(server);
+registerDownloadAttachment(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
-console.error("Jira MCP server running on stdio");
+console.error(`Jira MCP server v${pkg.version} running on stdio`);
