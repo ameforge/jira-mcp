@@ -19,6 +19,11 @@ export const defineTool = (
         content: Array.isArray(out) ? out : [{text: out, type: "text"}],
       };
     } catch (err) {
+      // stderr: stdout carries the MCP protocol. This is the only record of a
+      // failure in the client's log, which a bug report needs.
+      console.error(
+        `[${new Date().toISOString()}] ${name} failed: ${err.message}`,
+      );
       return {content: [{text: err.message, type: "text"}], isError: true};
     }
   });
