@@ -93,6 +93,7 @@ curl -u user:pass https://jira.company.com/rest/api/2/field | jq '.[] | select(.
 | `move_to_sprint`         | Move tickets into an active or future sprint                                                      | `ticket_ids`, `sprint` (name or ID)                                                                                                                                                              |
 | `add_attachment`         | Upload a local file to a Jira ticket as an attachment                                             | `ticket_id`, `file_path` (absolute)                                                                                                                                                              |
 | `delete_attachment`      | Delete an attachment from Jira (cannot be undone; IDs come from `get_ticket`)                     | `attachment_id`                                                                                                                                                                                  |
+| `download_attachment`    | Download a Jira attachment into a local directory (never overwrites; IDs come from `get_ticket`)  | `attachment_id`, `dir` (absolute)                                                                                                                                                                |
 | `generate_release_notes` | Generate Markdown release notes for a fix version, grouped by issue type                          | `fix_version`, optional: `project`                                                                                                                                                               |
 
 ### Notes
@@ -110,7 +111,8 @@ curl -u user:pass https://jira.company.com/rest/api/2/field | jq '.[] | select(.
 - `add_attachment` uploads one local file and returns its attachment ID. Pass an absolute `file_path`: a relative path resolves against the server process working directory, which the MCP client chooses. To show an uploaded image inline, reference it as `!filename.png!` in a comment or description. The server can read any file its user can read, so check the path before you approve the call.
 - `move_to_sprint` takes a sprint name or numeric ID. A name is looked up among the active and future sprints of the scrum boards of the first ticket's project (Agile API, `/rest/agile/1.0`); if it matches none, or several, nothing is moved and the error lists the open sprints with their IDs. To list a sprint's tickets, use `search_tickets` with JQL such as `sprint = "GEM Sprint 12"` or `sprint in openSprints()`.
 - `transition_ticket` resolves the transition ID automatically, matching either the transition's own name ("Resolve Issue") or the status it lands on ("Done"). Common aliases map onto whatever the workflow actually offers (Closed/Resolved/Complete → Done, Reopen → Re-Open, Todo → To Do, Cancelled → Won't Do), so the same call works across workflows with different status names. Exact matches win, then aliases, then a substring fallback. When nothing matches, the error lists every valid option for that issue as `Transition -> Target Status`; the tool description cannot list them because they vary per issue and workflow.
-- `update_ticket` only changes the fields you pass; omit a field to keep its current value. Pass `assignee=""` to unassign. `implementation_notes` appends to the description. Converting a standard issue type (Story, Task, Bug) to Sub-task or vice versa is a Jira REST API limitation — use the Jira UI "Move" action instead.
+- When Jira rejects an unknown issue type (`create_ticket`, `update_ticket`, `search_tickets`) or link type (`link_issues`), the error also lists the valid names: the project's issue types when the project is known, every issue type for a JQL search, and every link type.
+- `update_ticket` only changes the fields you pass; omit a field to keep its current value. Pass `assignee=""` to unassign, and `due_date=""` or `start_date=""` to clear a date. `implementation_notes` appends to the description. Converting a standard issue type (Story, Task, Bug) to Sub-task or vice versa is a Jira REST API limitation — use the Jira UI "Move" action instead.
 - `log_work` advertises one canonical name per work type (code, deploy, design, fix, management, meeting, misc, operation, qa, req, research, translation) and per activity (correct, create, review) so its schema stays small; every alias still works as input (coding, dev, testing, ops, requirement, other, and the rest). `activity` is required when `work_type` is set. If neither is set, logs via plain REST (no WorklogPRO form). If `work_type` or `activity` is set and the WorklogPRO form is unavailable, nothing is logged and the call fails (safe to retry); it never falls back to REST, which cannot set those attributes. A failed form submit is an error and is never retried, because the worklog may already exist. Start times are interpreted in the Jira server timezone (configurable via `JIRA_TIMEZONE`).
 - `get_ticket` with `include_worklogs=true` appends the ticket's worklogs, each line starting with its ID (`#20001`), which `update_worklog` and `delete_worklog` take. This costs one extra request (`GET /issue/{key}/worklog`), capped at the 20 most recent like comments. `log_work` returns no ID when it goes through the WorklogPRO form, so this is where to find it. `update_worklog` edits time, start and comment over REST only; to change Type of Work or Type of Activity, delete the worklog and log it again with `log_work`.
 - `generate_release_notes` groups tickets by type into Features / Improvements / Bug Fixes / Other.
@@ -131,7 +133,8 @@ curl -u user:pass https://jira.company.com/rest/api/2/field | jq '.[] | select(.
 - 401/403: recheck `JIRA_USERNAME`/`JIRA_PASSWORD` and whether the account can access the project.
 - Connection/timeout: verify `JIRA_HOST` format (starts with `https://`, no trailing `/`), and whether VPN/internal network is required.
 - Start date not saving: confirm `JIRA_START_DATE_FIELD` matches your instance (see the discovery command above).
-- No error logs: server logs go to stderr — check the MCP client (Claude Code/Desktop) output, not stdout.
+- Error logs: every failed tool call is written to stderr with a timestamp and the tool name, and the startup line shows the server version. On Windows, Claude Code keeps this in `%LOCALAPPDATA%\claude-cli-nodejs\Cache\<project>\mcp-logs-<server name>\` (for example `mcp-logs-g-jira-mcp`).
+- Reporting a bug: open an issue at <https://github.com/pnam16/gem-jira-mcp/issues> with the server version, the tool you called and the matching log lines. Logs can contain ticket content and internal URLs, so remove anything sensitive before you post. Nothing is sent anywhere automatically.
 
 ## Development
 
@@ -139,14 +142,18 @@ curl -u user:pass https://jira.company.com/rest/api/2/field | jq '.[] | select(.
 pnpm install
 cp .env.example .env   # edit with your credentials
 pnpm build             # bundle to dist/index.js via rsbuild
-pnpm lint              # biome check + tsc + prettier (markdown)
-pnpm release           # release-it: bumps version, commits, tags, pushes (runs lint + build first, no pre-commit needed)
+pnpm lint              # biome check + tsc
+pnpm release           # release-it: runs lint, test and build, then bumps version, commits, tags, pushes (commit your changes first; npm publish is a separate step)
 ```
 
 ## Support
 
-Questions or issues? Email [NamCP](mailto:namcp@gem-corp.global).
+Questions or issues? Email [PNam](mailto:pnamhn16@gmail.com).
 
 If this project helps you, consider buying me a coffee:
 
 <img src="https://raw.githubusercontent.com/pnam16/gem-jira-mcp/main/docs/buy-me-a-coffee.jpg" alt="Buy Me A Coffee" width="300">
+
+---
+
+Created by [PNam](mailto:pnamhn16@gmail.com)

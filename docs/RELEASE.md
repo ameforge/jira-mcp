@@ -15,14 +15,14 @@
    ```
 
    release-it sẽ thực hiện tự động:
-   - Lint + build kiểm tra
+   - Chạy lint, test và build để kiểm tra
    - Hỏi phiên bản mới (patch/minor/major)
    - Commit với message "chore: release v${version}"
    - Tạo git tag "v${version}"
    - Push commit và tag lên GitHub
    - Mở trang tạo GitHub release (cần điền thủ công trong browser)
 
-   Không cần commit trước; release-it xử lý git operations. Chỉ cần run khi muốn release.
+   Commit mọi thay đổi trước khi chạy: `.release-it.json` đặt `requireCleanWorkingDir: true`, nên release-it dừng lại nếu working tree chưa sạch. Bước commit version, tag và push thì release-it tự làm.
 
 2. Kiểm tra nhanh sau build (`pnpm build` chạy rsbuild theo `rsbuild.config.mjs`, bundle `src/index.js` thành file duy nhất `dist/index.js`, kèm shebang `#!/usr/bin/env node`):
 
@@ -59,7 +59,9 @@ Khi cài từ git, npm tự chạy script `prepare` (cấu hình `"prepare": "np
 - [ ] Local branch updated, tất cả changes đã commit
 
 release-it sẽ tự động:
-- [ ] Chạy lint + build
+- [ ] Chạy lint, test và build
 - [ ] Bump version trong package.json
 - [ ] Commit, tag, push
 - [ ] Mở browser để tạo GitHub release (copy changelog + submit form)
+
+Sau khi release xong, chạy `npm publish` (script `prepare` tự build lại `dist/index.js`).
