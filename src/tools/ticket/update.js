@@ -2,6 +2,8 @@ import {z} from "zod";
 import {defineTool} from "../../define-tool.js";
 import {EPIC_LINK_FIELD, START_DATE_FIELD} from "../../ticket-fields.js";
 import {withIssueTypes} from "../../valid-names.js";
+import {planTypeChange, runTypeWizard} from "./change-type.js";
+import {moveSubtaskParent} from "./move-subtask.js";
 
 // Jira's REST API silently ignores certain field writes (issue-type/Sub-task
 // conversions in particular) instead of rejecting the request, so callers
@@ -27,8 +29,10 @@ export const registerUpdateTicket = (server, jiraRequest) => {
     "update_ticket",
     {
       description:
-        "Update fields of a Jira ticket. Converting between a standard issue " +
-        'type and Sub-task is a Jira REST API limitation — use Jira\'s UI "Move" action instead.',
+        "Update fields of a Jira ticket. Changing issue_type to or from a " +
+        "sub-task type, or parent_key of an existing sub-task, goes through " +
+        "Jira's Move/Convert wizards; converting to a sub-task needs parent_key. " +
+        "It stops instead of deleting field values the new type cannot hold.",
       inputSchema: z.object({
         assignee: z
           .string()
@@ -139,31 +143,54 @@ export const registerUpdateTicket = (server, jiraRequest) => {
         throw new Error("No fields provided to update");
       }
 
-      // An issue key is "<project>-<n>", so the project comes from the key.
-      await withIssueTypes(
-        () => jira("PUT", `/issue/${ticket_id}`, body),
-        jira,
-        ticket_id.replace(/-\d+$/, ""),
-      );
-
-      if (parent_key !== undefined) {
-        await verifyFieldApplied(jira, ticket_id, {
-          expected: parent_key,
-          field: "parent",
-          hint: 'The Parent field is only editable on Sub-task issues, and Jira\'s REST API cannot convert an issue type to Sub-task directly. Use the Jira UI "Move" action: first convert the ticket to Task (if not already), then convert Task → Sub-task and set the parent in that same Move step.',
-          label: "parent",
-          noneText: "no parent",
-          readActual: (f) => f.parent?.key,
-        });
+      // REST rejects a type change to a sub-task type and ignores one from it,
+      // so those go through Jira's wizard, which also sets the new parent.
+      const typePlan =
+        issue_type !== undefined &&
+        (await planTypeChange(jira, ticket_id, issue_type, parent_key));
+      if (typePlan) {
+        delete fields.issuetype;
+        delete fields.parent;
       }
 
+      if (Object.keys(fields).length > 0 || body.update) {
+        // An issue key is "<project>-<n>", so the project comes from the key.
+        await withIssueTypes(
+          () => jira("PUT", `/issue/${ticket_id}`, body),
+          jira,
+          ticket_id.replace(/-\d+$/, ""),
+        );
+      }
+
+      // Before the parent check: converting to a sub-task is what sets the parent.
       if (issue_type !== undefined) {
+        if (typePlan) await runTypeWizard(typePlan);
         await verifyFieldApplied(jira, ticket_id, {
           expected: issue_type,
           field: "issuetype",
-          hint: 'Jira\'s REST API silently rejects conversions between standard issue types and Sub-task. Use the "Move" action in the Jira UI instead, or create a new Sub-task and migrate the content.',
+          hint: 'For a change between two standard types, use the Jira UI "Move" action.',
           label: "issue type",
           readActual: (f) => f.issuetype.name,
+        });
+      }
+
+      if (parent_key !== undefined) {
+        const {id, fields: current} = await jira(
+          "GET",
+          `/issue/${ticket_id}?fields=parent`,
+        );
+        // A sub-task keeps its old parent after the PUT; Jira only re-parents
+        // it through the Move form.
+        if (current.parent && current.parent.key !== parent_key) {
+          await moveSubtaskParent(id, parent_key);
+        }
+        await verifyFieldApplied(jira, ticket_id, {
+          expected: parent_key,
+          field: "parent",
+          hint: 'Only sub-tasks have a parent; to make it one, pass issue_type with a sub-task type (e.g. "Sub-task") together with parent_key.',
+          label: "parent",
+          noneText: "no parent",
+          readActual: (f) => f.parent?.key,
         });
       }
 

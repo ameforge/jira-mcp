@@ -11,7 +11,16 @@ const ISSUE_TYPE_JQL = `Jira API 400: {"errorMessages":["The value 'QA-Subtask' 
 const ISSUE_TYPE_FIELD = `Jira API 400: {"errorMessages":[],"errors":{"issuetype":"Could not find issuetype by id or name."}}`;
 const LINK_TYPE = `Jira API 404: {"errorMessages":["No issue link type with name 'Relates to' found."],"errors":{}}`;
 
+const UPDATE_PLAN = "/issue/GEM-12?fields=issuetype,status,project";
 const LOOKUPS = {
+  [UPDATE_PLAN]: {
+    fields: {
+      issuetype: {id: "1", name: "Task", subtask: false},
+      project: {key: "GEM"},
+      status: {name: "Open"},
+    },
+    id: "12",
+  },
   "/issueLinkType": {issueLinkTypes: [{name: "Blocks"}, {name: "Relates"}]},
   "/issuetype": [{name: "Task"}, {name: "QA Sub-Task"}, {name: "Task"}],
   "/project/GEM": {issueTypes: [{name: "Story"}, {name: "QA Sub-Task"}]},
@@ -54,7 +63,8 @@ for (const [register, name, args, jiraError, lookup, valid] of [
     "update_ticket",
     {issue_type: "QA-Subtask", ticket_id: "GEM-12"},
     ISSUE_TYPE_FIELD,
-    "/project/GEM",
+    // Planning the type change reads the ticket and its project first.
+    [UPDATE_PLAN, "/project/GEM", "/project/GEM"],
     "Valid issue types: Story, QA Sub-Task",
   ],
   [
@@ -69,7 +79,7 @@ for (const [register, name, args, jiraError, lookup, valid] of [
   test(`${name} lists the valid names when Jira rejects the type`, async () => {
     const r = await call(register, name, args, jiraError);
     assert.equal(r.text, `${jiraError}\n${valid}`);
-    assert.deepEqual(r.lookups, [lookup]);
+    assert.deepEqual(r.lookups, [lookup].flat());
   });
 }
 
