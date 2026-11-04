@@ -1,5 +1,6 @@
 import {z} from "zod";
 import {defineTool} from "../../define-tool.js";
+import {withLinkTypes} from "../../valid-names.js";
 
 export const registerLinkIssues = (server, jiraRequest) => {
   defineTool(
@@ -21,11 +22,15 @@ export const registerLinkIssues = (server, jiraRequest) => {
       }),
     },
     async ({inward_issue, outward_issue, link_type}, jira) => {
-      await jira("POST", "/issueLink", {
-        inwardIssue: {key: inward_issue},
-        outwardIssue: {key: outward_issue},
-        type: {name: link_type},
-      });
+      await withLinkTypes(
+        () =>
+          jira("POST", "/issueLink", {
+            inwardIssue: {key: inward_issue},
+            outwardIssue: {key: outward_issue},
+            type: {name: link_type},
+          }),
+        jira,
+      );
       return `Linked: ${inward_issue} "${link_type}" ${outward_issue}`;
     },
     jiraRequest,

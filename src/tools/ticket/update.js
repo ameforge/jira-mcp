@@ -1,6 +1,7 @@
 import {z} from "zod";
 import {defineTool} from "../../define-tool.js";
 import {EPIC_LINK_FIELD, START_DATE_FIELD} from "../../ticket-fields.js";
+import {withIssueTypes} from "../../valid-names.js";
 
 // Jira's REST API silently ignores certain field writes (issue-type/Sub-task
 // conversions in particular) instead of rejecting the request, so callers
@@ -34,7 +35,10 @@ export const registerUpdateTicket = (server, jiraRequest) => {
           .optional()
           .describe("Username to assign, or empty string to unassign"),
         description: z.string().optional().describe("Replace full description"),
-        due_date: z.string().optional().describe("Due date YYYY-MM-DD"),
+        due_date: z
+          .string()
+          .optional()
+          .describe("Due date YYYY-MM-DD, or empty string to clear"),
         epic_key: z
           .string()
           .optional()
@@ -67,7 +71,10 @@ export const registerUpdateTicket = (server, jiraRequest) => {
           .string()
           .optional()
           .describe('Priority name, e.g. "High", "Medium", "Low"'),
-        start_date: z.string().optional().describe("Start date YYYY-MM-DD"),
+        start_date: z
+          .string()
+          .optional()
+          .describe("Start date YYYY-MM-DD, or empty string to clear"),
         summary: z.string().optional().describe("Replace ticket summary/title"),
         ticket_id: z.string().describe("Jira issue key, e.g. GEM-234"),
       }),
@@ -115,8 +122,10 @@ export const registerUpdateTicket = (server, jiraRequest) => {
       if (parent_key !== undefined) fields.parent = {key: parent_key};
       if (epic_key !== undefined) fields[EPIC_LINK_FIELD] = epic_key;
       if (labels !== undefined) fields.labels = labels;
-      if (due_date !== undefined) fields.duedate = due_date;
-      if (start_date !== undefined) fields[START_DATE_FIELD] = start_date;
+      // Jira cannot parse "" as a date; null is how it clears one.
+      if (due_date !== undefined) fields.duedate = due_date || null;
+      if (start_date !== undefined)
+        fields[START_DATE_FIELD] = start_date || null;
 
       const body = {fields};
 
@@ -130,7 +139,12 @@ export const registerUpdateTicket = (server, jiraRequest) => {
         throw new Error("No fields provided to update");
       }
 
-      await jira("PUT", `/issue/${ticket_id}`, body);
+      // An issue key is "<project>-<n>", so the project comes from the key.
+      await withIssueTypes(
+        () => jira("PUT", `/issue/${ticket_id}`, body),
+        jira,
+        ticket_id.replace(/-\d+$/, ""),
+      );
 
       if (parent_key !== undefined) {
         await verifyFieldApplied(jira, ticket_id, {

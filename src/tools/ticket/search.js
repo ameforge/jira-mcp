@@ -1,6 +1,7 @@
 import {z} from "zod";
 import {defineTool} from "../../define-tool.js";
 import {START_DATE_FIELD} from "../../ticket-fields.js";
+import {withIssueTypes} from "../../valid-names.js";
 
 const COLUMNS = [
   "KEY",
@@ -39,7 +40,10 @@ export const registerSearchTickets = (server, jiraRequest) => {
         jql,
         maxResults: String(max_results),
       });
-      const data = await jira("GET", `/search?${params}`);
+      const data = await withIssueTypes(
+        () => jira("GET", `/search?${params}`),
+        jira,
+      );
       if (!data.issues?.length) return "No issues found";
 
       const rows = data.issues.map(({fields: f, key}) => ({
