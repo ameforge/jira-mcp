@@ -21,7 +21,12 @@ export const registerLogWork = (server) => {
           .describe(
             `Type of Activity (required when work_type is set): ${canonicalNames(ACTIVITIES)}`,
           ),
-        comment: z.string().optional().describe("Optional work log comment"),
+        comment: z
+          .string()
+          .optional()
+          .describe(
+            "Work log comment. Required when work_type or activity is set (the WorklogPRO form rejects an empty comment)",
+          ),
         started: z
           .string()
           .optional()

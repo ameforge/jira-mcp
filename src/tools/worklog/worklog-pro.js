@@ -1,6 +1,8 @@
 import {AUTH_HEADER, JIRA_HOST, jiraRequest} from "../../jira-client.js";
 
 // WorklogPRO (Deniz) work-type / activity ids, keyed by user-friendly aliases.
+// Ids are the option values of the form's wa_1 / wa_2 selects. Id 8 is the
+// Correction activity, not a work type, so "fix" belongs to ACTIVITIES only.
 export const WORK_TYPES = {
   code: 3,
   coding: 3,
@@ -8,7 +10,6 @@ export const WORK_TYPES = {
   deployment: 5,
   design: 2,
   dev: 3,
-  fix: 8,
   management: 11,
   meeting: 12,
   mgmt: 11,
@@ -190,15 +191,46 @@ export const logWorkPro = async (ticketId, timeSpent, opts = {}) => {
   if (body.includes("XSRF Security Token Missing")) {
     throw new Error("WorklogPRO: XSRF token rejected");
   }
-  // A successful submit renders no form error; any class="error" element (e.g.
+  // A successful submit renders no form error; any error element (e.g.
   // "Type of Activity is required") means the worklog was not created.
-  const errMatch = body.match(/class="error"[^>]*>([^<]+)</);
-  if (errMatch || body.includes("aui-message-error")) {
+  const reasons = formErrors(body);
+  if (reasons || body.includes("aui-message-error")) {
     throw new Error(
-      errMatch
-        ? `WorklogPRO: ${errMatch[1].trim()}`
-        : "WorklogPRO: submission failed",
+      `WorklogPRO: ${reasons || "the form reported an error without readable text"}; nothing was logged, fix the input and retry`,
     );
   }
   return {};
+};
+
+// Field errors are class="error"; the banner is class="aui-message
+// aui-message-error" with its text in nested tags, so each block is read up to
+// its balanced closing tag rather than to the first "<".
+const ERROR_OPEN =
+  /<(\w+)[^>]*\bclass="(?:[^"]*\s)?(?:aui-message-)?error(?:\s[^"]*)?"[^>]*>/gi;
+const textOf = (html) =>
+  html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+const formErrors = (html) => {
+  const reasons = new Set();
+  let end = 0;
+  for (const open of html.matchAll(ERROR_OPEN)) {
+    if (open.index < end) continue; // nested in a block already read
+    const start = open.index + open[0].length;
+    const tag = new RegExp(`<(/?)${open[1]}\\b[^>]*>`, "gi");
+    tag.lastIndex = start;
+    let depth = 1;
+    end = html.length;
+    for (let m = tag.exec(html); m; m = tag.exec(html)) {
+      depth += m[1] ? -1 : 1;
+      if (!depth) {
+        end = m.index;
+        break;
+      }
+    }
+    const text = textOf(html.slice(start, end)).slice(0, 300);
+    if (text) reasons.add(text);
+  }
+  return [...reasons].join("; ");
 };
