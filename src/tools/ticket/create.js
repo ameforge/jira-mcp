@@ -1,5 +1,6 @@
 import {z} from "zod";
 import {defineTool} from "../../define-tool.js";
+import {JIRA_HOST} from "../../jira-client.js";
 import {START_DATE_FIELD} from "../../ticket-fields.js";
 import {withIssueTypes} from "../../valid-names.js";
 
@@ -70,7 +71,7 @@ export const registerCreateTicket = (server, jiraRequest) => {
         jira,
         project,
       );
-      const url = `${process.env.JIRA_HOST}/browse/${result.key}`;
+      const url = `${JIRA_HOST}/browse/${result.key}`;
 
       // timetracking in the create payload makes Jira Data Center answer a bare
       // 500 ({"errorMessages":["Internal server error"]}), so the estimate goes

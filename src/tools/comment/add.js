@@ -1,5 +1,6 @@
 import {z} from "zod";
 import {defineTool} from "../../define-tool.js";
+import {JIRA_HOST} from "../../jira-client.js";
 
 export const registerAddComment = (server, jiraRequest) => {
   defineTool(
@@ -14,7 +15,7 @@ export const registerAddComment = (server, jiraRequest) => {
     },
     async ({ticket_id, body}, jira) => {
       const result = await jira("POST", `/issue/${ticket_id}/comment`, {body});
-      const commentUrl = `${process.env.JIRA_HOST}/browse/${ticket_id}?focusedCommentId=${result.id}`;
+      const commentUrl = `${JIRA_HOST}/browse/${ticket_id}?focusedCommentId=${result.id}`;
       return `Comment added: ${commentUrl}`;
     },
     jiraRequest,

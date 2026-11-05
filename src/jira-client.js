@@ -5,11 +5,16 @@ import dotenv from "dotenv";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({path: resolve(__dirname, "../.env")});
 
-const BASE = `${process.env.JIRA_HOST}/rest/api/2`;
+// Tolerate MCP client configs that pass literal quotes or a trailing slash:
+// "https://host/" would build "//rest/..." and Jira answers 404 "null for uri".
+export const JIRA_HOST = (process.env.JIRA_HOST ?? "")
+  .trim()
+  .replace(/^["']|["']$/g, "")
+  .replace(/\/+$/, "");
+const BASE = `${JIRA_HOST}/rest/api/2`;
 const AUTH = Buffer.from(
   `${process.env.JIRA_USERNAME}:${process.env.JIRA_PASSWORD}`,
 ).toString("base64");
-export const JIRA_HOST = process.env.JIRA_HOST;
 export const AUTH_HEADER = `Basic ${AUTH}`;
 const HEADERS = {
   Accept: "application/json",
