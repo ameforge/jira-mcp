@@ -9,6 +9,7 @@ Status: accepted
 `create_ticket` and `update_ticket` both map tool params to Jira fields (parent, due date, start date, labels, assignee, original estimate), which looks like duplication that a shared mapper would remove.
 
 The two mappings differ on purpose:
+
 - `update_ticket` writes any param that is present (`!== undefined`), so an empty `assignee` unassigns the ticket.
 - `create_ticket` skips empty values, because there is nothing to clear on a new ticket.
 - The original estimate goes through `update.timetracking.edit` in both, but `create_ticket` must send it in a second request: Jira Data Center answers a bare 500 when `timetracking` is in the create payload.
