@@ -36,21 +36,13 @@
 
 Các kênh cài đặt cho người dùng:
 
-### 1. npm (khuyến nghị)
+### npm (khuyến nghị)
 
 ```bash
 npx -y g-jira-mcp@latest
 ```
 
 Package publish trên npm với tên `g-jira-mcp` (tên `jira-mcp` đã bị chiếm bởi tài khoản khác). `.release-it.json` để `npm.publish: false`, nên `pnpm release` không tự publish npm; cần publish riêng sau khi release.
-
-### 2. GitHub (git install)
-
-```bash
-npx github:pnam16/gem-jira-mcp
-```
-
-Khi cài từ git, npm tự chạy script `prepare` (cấu hình `"prepare": "npm run build"`) để build `dist/index.js`. release-it tự động push tag lên GitHub — chỉ cần đảm bảo repo ở chế độ public.
 
 ## Checklist trước `pnpm release`
 

@@ -9,11 +9,7 @@
   },
   "description": "MCP server for Jira Server/Data Center (REST API v2)",
   "devDependencies": {
-    "@biomejs/biome": "^2.6.5",
-    "@rsbuild/core": "^2.3.1",
-    "@types/node": "^26.6.6",
-    "release-it": "^20.2.1",
-    "typescript": "^6.0.3"
+    "@rsbuild/core": "^2.3.1"
   },
   "files": [
     "dist"
@@ -46,12 +42,12 @@
   "main": "dist/index.js",
   "name": "g-jira-mcp",
   "repository": {
+    "directory": "packages/jira-mcp",
     "type": "git",
-    "url": "git+https://github.com/pnam16/gem-jira-mcp.git"
+    "url": "git+https://github.com/pnam16/atlassian-mcp.git"
   },
   "scripts": {
     "build": "rsbuild build",
-    "lint": "biome migrate --write && biome check --write . && tsc --noEmit",
     "prepare": "npm run build",
     "release": "release-it",
     "start": "node src/index.js",

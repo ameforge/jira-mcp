@@ -1,20 +1,21 @@
 {
   "git": {
     "commit": true,
-    "commitMessage": "chore: release v${version}",
+    "commitMessage": "chore(jira-mcp): release v${version}",
     "push": true,
     "pushTags": true,
     "requireCleanWorkingDir": true,
     "tag": true,
-    "tagName": "v${version}"
+    "tagMatch": "jira-v*",
+    "tagName": "jira-v${version}"
   },
   "github": {
     "release": true,
-    "releaseName": "v${version}"
+    "releaseName": "jira-mcp v${version}"
   },
   "hooks": {
     "after:release": "echo \"Released v${version}\"",
-    "before:init": ["npm run lint", "npm test", "npm run build"]
+    "before:init": ["pnpm -w run lint", "npm test", "npm run build"]
   },
   "npm": {
     "allowSameVersion": false,
