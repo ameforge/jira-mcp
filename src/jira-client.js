@@ -15,7 +15,10 @@ const BASE = `${JIRA_HOST}/rest/api/2`;
 const AUTH = Buffer.from(
   `${process.env.JIRA_USERNAME}:${process.env.JIRA_PASSWORD}`,
 ).toString("base64");
-export const AUTH_HEADER = `Basic ${AUTH}`;
+// A Personal Access Token lets SSO-only accounts (no Jira password) authenticate.
+export const AUTH_HEADER = process.env.JIRA_TOKEN
+  ? `Bearer ${process.env.JIRA_TOKEN.trim()}`
+  : `Basic ${AUTH}`;
 const HEADERS = {
   Accept: "application/json",
   Authorization: AUTH_HEADER,

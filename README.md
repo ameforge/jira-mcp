@@ -58,8 +58,9 @@ Restart Claude Code/Desktop after editing the config.
 | Variable                | Required | Description                                                    |
 | ----------------------- | -------- | -------------------------------------------------------------- |
 | `JIRA_HOST`             | yes      | Base URL, e.g. `https://jira.company.com`                      |
-| `JIRA_USERNAME`         | yes      | Jira username                                                  |
-| `JIRA_PASSWORD`         | yes      | Jira password                                                  |
+| `JIRA_USERNAME`         | yes*     | Jira username                                                  |
+| `JIRA_PASSWORD`         | yes*     | Jira password                                                  |
+| `JIRA_TOKEN`            | no       | Personal Access Token; when set, replaces username/password (*) |
 | `JIRA_START_DATE_FIELD` | no       | Custom field ID for "Start date" (default `customfield_11300`) |
 | `JIRA_EPIC_LINK_FIELD`  | no       | Custom field ID for "Epic Link" (default `customfield_10001`)  |
 | `JIRA_TIMEZONE`         | no       | Timezone for WorklogPRO form (default `Asia/Ho_Chi_Minh`)      |
