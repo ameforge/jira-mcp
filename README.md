@@ -144,7 +144,7 @@ pnpm install
 cp .env.example .env   # edit with your credentials
 pnpm build             # bundle to dist/index.js via rsbuild
 pnpm lint              # biome check + tsc
-pnpm release           # release-it: runs lint, test and build, then bumps version, commits, tags, pushes (commit your changes first; npm publish is a separate step)
+pnpm release           # release-it: runs lint, test and build, then bumps version, commits, tags, pushes (commit your changes first; pnpm publish is a separate step)
 ```
 
 ## Support

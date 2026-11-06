@@ -105,10 +105,13 @@ test("update_ticket never finishes a type change that would delete field values"
   const sent = stubConvertWizard(
     "Type Sub-task Task Removed fields Severity Normal Removed",
   );
-  const result = await convertToTask(sent);
+  const puts = [];
+  const result = await convertToTask(sent, puts, {summary: "New title"});
 
   assert.equal(result.isError, true);
   assert.match(result.content[0].text, /would delete field values/);
+  // The error says nothing was changed, so the other fields must not be saved.
+  assert.deepEqual(puts, []);
   assert.match(result.content[0].text, /Severity Normal/);
   assert.ok(!sent.some((s) => s.url.includes("ConvertSubTaskConvert")));
 });

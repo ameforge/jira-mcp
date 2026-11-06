@@ -14,8 +14,8 @@
     "releaseName": "jira-mcp v${version}"
   },
   "hooks": {
-    "after:release": "echo \"Released v${version}\"",
-    "before:init": ["pnpm -w run lint", "npm test", "npm run build"]
+    "after:release": "node ../../scripts/mirror.js jira-mcp ${version}",
+    "before:init": ["pnpm -w run check", "pnpm test", "pnpm build"]
   },
   "npm": {
     "allowSameVersion": false,

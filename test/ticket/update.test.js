@@ -32,8 +32,8 @@ test("update_ticket succeeds when Jira applies the requested parent", async () =
   });
   assert.equal(result.content[0].text, "GEM-1 updated successfully");
   assert.deepEqual(calls, [
-    "PUT /issue/GEM-1",
     "GET /issue/GEM-1?fields=parent",
+    "PUT /issue/GEM-1",
     "GET /issue/GEM-1?fields=parent",
   ]);
 });
@@ -74,10 +74,14 @@ const stubMoveForm = ({submit = 302, submitHtml = ""} = {}) => {
 };
 
 // The sub-task reports GEM-5 as its parent on the first read, then `after`.
-const reparentJira = (after) => {
+// PUT bodies land in `puts`.
+const reparentJira = (after, puts = []) => {
   let parent = "GEM-5";
-  return async (method) => {
-    if (method === "PUT") return null;
+  return async (method, _path, body) => {
+    if (method === "PUT") {
+      puts.push(body);
+      return null;
+    }
     const result = {fields: {parent: {key: parent}}, id: "1001"};
     parent = after;
     return result;
@@ -110,14 +114,44 @@ test("update_ticket reports why Jira rejected a sub-task's new parent", async ()
     submitHtml: '<div class="error">Parent issue GEM-9 is a sub-task</div>',
   });
   const server = fakeServer();
-  registerUpdateTicket(server, reparentJira("GEM-5"));
+  const puts = [];
+  registerUpdateTicket(server, reparentJira("GEM-5", puts));
 
   const result = await server.tools.get("update_ticket")({
     parent_key: "GEM-9",
+    summary: "New title",
     ticket_id: "GEM-1",
   });
   assert.equal(result.isError, true);
   assert.match(result.content[0].text, /Parent issue GEM-9 is a sub-task/);
+  // The rejection reports nothing changed, so the summary must not be saved.
+  assert.deepEqual(puts, []);
+});
+
+test("update_ticket appends implementation notes to a description sent in the same call", async () => {
+  const server = fakeServer();
+  const calls = [];
+  registerUpdateTicket(server, async (method, path, body) => {
+    calls.push([method, path, body]);
+    return null;
+  });
+
+  await server.tools.get("update_ticket")({
+    description: "New text",
+    implementation_notes: "Note",
+    ticket_id: "GEM-1",
+  });
+  assert.deepEqual(calls, [
+    [
+      "PUT",
+      "/issue/GEM-1",
+      {
+        fields: {
+          description: "New text\n\n--- Implementation Notes ---\nNote",
+        },
+      },
+    ],
+  ]);
 });
 
 test("update_ticket succeeds when Jira applies the requested Epic Link", async () => {

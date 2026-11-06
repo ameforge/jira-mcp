@@ -51,6 +51,18 @@ test("transition_ticket prefers an alias hit over a substring hit", async () => 
   assert.deepEqual(posted, ["21"]);
 });
 
+test("transition_ticket posts nothing for an empty status", async () => {
+  const {posted, result} = await transitionTo("  ");
+  assert.deepEqual(posted, []);
+  assert.equal(result.isError, true);
+});
+
+test('transition_ticket never maps "Cancelled" onto Done', async () => {
+  const {posted, result} = await transitionTo("Cancelled");
+  assert.deepEqual(posted, []);
+  assert.match(result.content[0].text, /Status "Cancelled" not found/);
+});
+
 test("transition_ticket lists transition and target names when nothing matches", async () => {
   const {posted, result} = await transitionTo("Deployed");
   assert.deepEqual(posted, []);

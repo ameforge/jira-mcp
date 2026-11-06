@@ -48,11 +48,11 @@
   },
   "scripts": {
     "build": "rsbuild build",
-    "prepare": "npm run build",
+    "prepare": "pnpm build",
     "release": "release-it",
     "start": "node src/index.js",
     "test": "node --test"
   },
   "type": "module",
-  "version": "2.13.0"
+  "version": "2.13.1"
 }

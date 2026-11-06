@@ -33,3 +33,16 @@ test("generate_release_notes matches the Done category and drops work that never
   assert.match(content[0].text, /## Bug Fixes\n- GEM-2/);
   assert.doesNotMatch(content[0].text, /GEM-[345]/);
 });
+
+test("generate_release_notes says when Jira returned only part of the version", async () => {
+  const server = fakeServer();
+  registerGenerateReleaseNotes(server, async () => ({
+    issues: [issue("GEM-1", "Story", "Done")],
+    total: 250,
+  }));
+
+  const {content} = await server.tools.get("generate_release_notes")({
+    fix_version: "v1",
+  });
+  assert.match(content[0].text, /only the first 1 of 250 matching issues/);
+});

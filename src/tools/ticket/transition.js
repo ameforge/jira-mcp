@@ -5,7 +5,8 @@ import {defineTool} from "../../define-tool.js";
 // ordered candidate list tried against whatever this issue actually offers, so
 // the same alias works on a workflow with "Done" and one with "Closed".
 const ALIASES = {
-  cancelled: ["cancelled", "canceled", "won't do", "rejected", "done"],
+  // No "done" fallback: release notes count Done as shipped.
+  cancelled: ["cancelled", "canceled", "won't do", "rejected"],
   closed: ["closed", "done", "resolved", "complete", "completed"],
   complete: ["done", "complete", "completed", "closed"],
   completed: ["done", "completed", "complete", "closed"],
@@ -48,6 +49,8 @@ export const registerTransitionTicket = (server, jiraRequest) => {
         `/issue/${ticket_id}/transitions`,
       );
       const wanted = status.trim().toLowerCase();
+      // "" is a substring of every name, so it would pick the first transition.
+      if (!wanted) throw new Error("status is empty");
       const pick = (want) =>
         transitions.find((t) => namesOf(t).some((n) => n === want));
       const match =

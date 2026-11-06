@@ -1,0 +1,46 @@
+import {registerAddAttachment} from "./tools/attachment/add.js";
+import {registerDeleteAttachment} from "./tools/attachment/delete.js";
+import {registerDownloadAttachment} from "./tools/attachment/download.js";
+import {registerAddComment} from "./tools/comment/add.js";
+import {registerDeleteComment} from "./tools/comment/delete.js";
+import {registerGetComment} from "./tools/comment/get.js";
+import {registerUpdateComment} from "./tools/comment/update.js";
+import {registerLinkIssues} from "./tools/link/link.js";
+import {registerUnlinkIssues} from "./tools/link/unlink.js";
+import {registerGenerateReleaseNotes} from "./tools/release/generate.js";
+import {registerMoveToSprint} from "./tools/sprint/move.js";
+import {registerCreateTicket} from "./tools/ticket/create.js";
+import {registerGetTicket} from "./tools/ticket/get.js";
+import {registerSearchTickets} from "./tools/ticket/search.js";
+import {registerTransitionTicket} from "./tools/ticket/transition.js";
+import {registerUpdateTicket} from "./tools/ticket/update.js";
+import {registerAddWatcher} from "./tools/watcher/add.js";
+import {registerRemoveWatcher} from "./tools/watcher/remove.js";
+import {registerDeleteWorklog} from "./tools/worklog/delete.js";
+import {registerLogWork} from "./tools/worklog/log.js";
+import {registerUpdateWorklog} from "./tools/worklog/update.js";
+
+/** @param {any} server An McpServer, or anything with its registerTool. */
+export const registerTools = (server) => {
+  registerGetTicket(server);
+  registerTransitionTicket(server);
+  registerUpdateTicket(server);
+  registerAddComment(server);
+  registerUpdateComment(server);
+  registerDeleteComment(server);
+  registerGetComment(server);
+  registerSearchTickets(server);
+  registerCreateTicket(server);
+  registerGenerateReleaseNotes(server);
+  registerLinkIssues(server);
+  registerUnlinkIssues(server);
+  registerLogWork(server);
+  registerUpdateWorklog(server);
+  registerDeleteWorklog(server);
+  registerAddWatcher(server);
+  registerRemoveWatcher(server);
+  registerMoveToSprint(server);
+  registerAddAttachment(server);
+  registerDeleteAttachment(server);
+  registerDownloadAttachment(server);
+};

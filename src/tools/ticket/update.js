@@ -110,11 +110,12 @@ export const registerUpdateTicket = (server, jiraRequest) => {
       }
 
       if (implementation_notes !== undefined) {
-        const current = await jira(
-          "GET",
-          `/issue/${ticket_id}?fields=description`,
-        );
-        const existing = current.fields.description || "";
+        // Append to a description passed in the same call, not the stored one.
+        const existing =
+          description ??
+          ((await jira("GET", `/issue/${ticket_id}?fields=description`)).fields
+            .description ||
+            "");
         fields.description =
           existing +
           "\n\n--- Implementation Notes ---\n" +
@@ -153,27 +154,10 @@ export const registerUpdateTicket = (server, jiraRequest) => {
         delete fields.parent;
       }
 
-      if (Object.keys(fields).length > 0 || body.update) {
-        // An issue key is "<project>-<n>", so the project comes from the key.
-        await withIssueTypes(
-          () => jira("PUT", `/issue/${ticket_id}`, body),
-          jira,
-          ticket_id.replace(/-\d+$/, ""),
-        );
-      }
-
-      // Before the parent check: converting to a sub-task is what sets the parent.
-      if (issue_type !== undefined) {
-        if (typePlan) await runTypeWizard(typePlan);
-        await verifyFieldApplied(jira, ticket_id, {
-          expected: issue_type,
-          field: "issuetype",
-          hint: 'For a change between two standard types, use the Jira UI "Move" action.',
-          label: "issue type",
-          readActual: (f) => f.issuetype.name,
-        });
-      }
-
+      // The wizards run before the REST write: they stop with "nothing was
+      // changed", which only holds while no other field has been saved yet.
+      // The type wizard goes first: converting to a sub-task sets the parent.
+      if (typePlan) await runTypeWizard(typePlan);
       if (parent_key !== undefined) {
         const {id, fields: current} = await jira(
           "GET",
@@ -184,6 +168,28 @@ export const registerUpdateTicket = (server, jiraRequest) => {
         if (current.parent && current.parent.key !== parent_key) {
           await moveSubtaskParent(id, parent_key);
         }
+      }
+
+      if (Object.keys(fields).length > 0 || body.update) {
+        // An issue key is "<project>-<n>", so the project comes from the key.
+        await withIssueTypes(
+          () => jira("PUT", `/issue/${ticket_id}`, body),
+          jira,
+          ticket_id.replace(/-\d+$/, ""),
+        );
+      }
+
+      if (issue_type !== undefined) {
+        await verifyFieldApplied(jira, ticket_id, {
+          expected: issue_type,
+          field: "issuetype",
+          hint: 'For a change between two standard types, use the Jira UI "Move" action.',
+          label: "issue type",
+          readActual: (f) => f.issuetype.name,
+        });
+      }
+
+      if (parent_key !== undefined) {
         await verifyFieldApplied(jira, ticket_id, {
           expected: parent_key,
           field: "parent",
