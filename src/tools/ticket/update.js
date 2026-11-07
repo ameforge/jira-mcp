@@ -157,7 +157,12 @@ export const registerUpdateTicket = (server, jiraRequest) => {
       // The wizards run before the REST write: they stop with "nothing was
       // changed", which only holds while no other field has been saved yet.
       // The type wizard goes first: converting to a sub-task sets the parent.
-      if (typePlan) await runTypeWizard(typePlan);
+      // What the wizards already changed, for an error after them.
+      const changed = [];
+      if (typePlan) {
+        await runTypeWizard(typePlan);
+        changed.push(`issue type to "${issue_type}"`);
+      }
       if (parent_key !== undefined) {
         const {id, fields: current} = await jira(
           "GET",
@@ -167,6 +172,7 @@ export const registerUpdateTicket = (server, jiraRequest) => {
         // it through the Move form.
         if (current.parent && current.parent.key !== parent_key) {
           await moveSubtaskParent(id, parent_key);
+          changed.push(`parent to ${parent_key}`);
         }
       }
 
@@ -176,7 +182,12 @@ export const registerUpdateTicket = (server, jiraRequest) => {
           () => jira("PUT", `/issue/${ticket_id}`, body),
           jira,
           ticket_id.replace(/-\d+$/, ""),
-        );
+        ).catch((err) => {
+          if (!changed.length) throw err;
+          throw new Error(
+            `${ticket_id}: changed ${changed.join(" and ")}, but the other fields were not saved: ${err.message}`,
+          );
+        });
       }
 
       if (issue_type !== undefined) {

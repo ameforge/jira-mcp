@@ -53,6 +53,13 @@ Or manually add to `.claude/settings.json` (or `claude_desktop_config.json`):
 
 Restart Claude Code/Desktop after editing the config.
 
+To check that it connected, run `/mcp` inside Claude Code, or `claude mcp list` in a terminal.
+
+Official setup guides:
+
+- Claude Code: [Connect Claude Code to tools via MCP](https://code.claude.com/docs/en/mcp) explains `claude mcp add`, the local, project and user scopes, and the shared `.mcp.json` file.
+- Claude Desktop: [Connect to local MCP servers](https://modelcontextprotocol.io/docs/develop/connect-local-servers) shows, with screenshots, how to open `claude_desktop_config.json` from Settings, Developer, Edit Config, and where to find the logs when a server does not start.
+
 ## Environment variables
 
 | Variable                | Required | Description                                                     |

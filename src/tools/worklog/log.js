@@ -7,7 +7,7 @@ import {
   WORK_TYPES,
 } from "./worklog-pro.js";
 
-export const registerLogWork = (server) => {
+export const registerLogWork = (server, jiraRequest) => {
   defineTool(
     server,
     "log_work",
@@ -41,8 +41,11 @@ export const registerLogWork = (server) => {
           .describe(`Type of Work: ${canonicalNames(WORK_TYPES)}`),
       }),
     },
-    async ({ticket_id, time_spent, comment, started, work_type, activity}) => {
-      const {id} = await logWorkPro(ticket_id, time_spent, {
+    async (
+      {ticket_id, time_spent, comment, started, work_type, activity},
+      jira,
+    ) => {
+      const {id} = await logWorkPro(jira, ticket_id, time_spent, {
         activity,
         comment,
         started,
@@ -53,5 +56,6 @@ export const registerLogWork = (server) => {
       const idNote = id ? ` (worklog id: ${id})` : "";
       return `Logged ${time_spent} on ${ticket_id}${attrNote}${idNote}`;
     },
+    jiraRequest,
   );
 };

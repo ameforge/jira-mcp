@@ -2,14 +2,12 @@
   "bin": {
     "g-jira-mcp": "dist/index.js"
   },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.2",
-    "dotenv": "^16.6.1",
-    "zod": "^3.25.76"
-  },
   "description": "MCP server for Jira Server/Data Center (REST API v2)",
   "devDependencies": {
-    "@rsbuild/core": "^2.3.1"
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@rsbuild/core": "^2.3.1",
+    "dotenv": "^16.6.1",
+    "zod": "^3.25.76"
   },
   "files": [
     "dist"
@@ -42,7 +40,7 @@
   "main": "dist/index.js",
   "name": "g-jira-mcp",
   "repository": {
-    "directory": "packages/jira-mcp",
+    "directory": "packages/jira",
     "type": "git",
     "url": "git+https://github.com/pnam16/atlassian-mcp.git"
   },
@@ -54,5 +52,5 @@
     "test": "node --test"
   },
   "type": "module",
-  "version": "2.13.1"
+  "version": "2.13.2"
 }

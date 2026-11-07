@@ -1,7 +1,15 @@
-import {AUTH_HEADER, JIRA_HOST} from "../../jira-client.js";
+import {JIRA_HOST} from "../../jira-client.js";
+import {formErrors, formSession} from "../../web-form.js";
 
 const MAX_STEPS = 8;
-const decode = (s) => s.replace(/&amp;/g, "&").replace(/&gt;/g, ">");
+// &amp; last, so "&amp;lt;" stays the literal text "&lt;".
+const decode = (s) =>
+  s
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
 
 // Reads the wizard's form: every field with the value the page pre-fills, the
 // select options (value and visible text), and the submit button.
@@ -52,34 +60,11 @@ const parseForm = (html) => {
   };
 };
 
-const pageErrors = (html) =>
-  [...html.matchAll(/class="error[^"]*"[^>]*>\s*([^<]+?)\s*</g)].map(
-    (m) => m[1],
-  );
-
 // Drives one of Jira's classic convert/move wizards to the end. `answers` sets
 // fields by name wherever a step has them; everything else keeps the value the
 // page pre-filled, as the UI would submit it.
 const runWizard = async (startPath, answers, currentStatus, ticketId) => {
-  const cookies = new Map();
-  const send = async (url, body) => {
-    const res = await fetch(url, {
-      body,
-      headers: {
-        Authorization: AUTH_HEADER,
-        Cookie: [...cookies].map(([k, v]) => `${k}=${v}`).join("; "),
-        ...(body && {"Content-Type": "application/x-www-form-urlencoded"}),
-      },
-      method: body ? "POST" : "GET",
-      redirect: "manual",
-    });
-    for (const c of res.headers.getSetCookie()) {
-      const [pair] = c.split(";");
-      const at = pair.indexOf("=");
-      cookies.set(pair.slice(0, at), pair.slice(at + 1));
-    }
-    return res;
-  };
+  const send = formSession();
   // Follows redirects by hand so every hop keeps the session cookies; a hop to
   // the issue page is how Jira reports a finished wizard.
   const load = async (url, body) => {
@@ -96,7 +81,7 @@ const runWizard = async (startPath, answers, currentStatus, ticketId) => {
   for (let step = 0; step < MAX_STEPS && !page.done; step++) {
     const form = parseForm(page.html);
     if (!form) {
-      const why = pageErrors(page.html).join("; ");
+      const why = formErrors(page.html);
       throw new Error(
         `Jira did not open the issue type wizard for ${ticketId} (HTTP ${page.status})` +
           (why ? `: ${why}` : "") +
@@ -136,7 +121,7 @@ const runWizard = async (startPath, answers, currentStatus, ticketId) => {
     // new type needs) did not advance.
     if (!next.done && parseForm(next.html)?.action === form.action) {
       throw new Error(
-        `Jira stopped the issue type change of ${ticketId}: ${pageErrors(next.html).join("; ") || "the step did not advance"}. Nothing was changed.`,
+        `Jira stopped the issue type change of ${ticketId}: ${formErrors(next.html) || "the step did not advance"}. Nothing was changed.`,
       );
     }
     page = next;

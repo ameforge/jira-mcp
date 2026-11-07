@@ -1,4 +1,5 @@
-import {AUTH_HEADER, JIRA_HOST} from "../../jira-client.js";
+import {JIRA_HOST} from "../../jira-client.js";
+import {formErrors, formSession} from "../../web-form.js";
 
 // Jira's REST API ignores a parent change on an existing sub-task, so this
 // drives the UI's Move > Change Parent form instead. Not retried: it is a POST.
@@ -7,19 +8,12 @@ import {AUTH_HEADER, JIRA_HOST} from "../../jira-client.js";
  * @param {string} parentKey
  */
 export const moveSubtaskParent = async (issueId, parentKey) => {
-  const page = (path, cookie) =>
-    fetch(`${JIRA_HOST}/secure/${path}?id=${issueId}`, {
-      headers: {Authorization: AUTH_HEADER, ...(cookie && {Cookie: cookie})},
-      redirect: "manual",
-    });
+  const send = formSession();
+  const page = (path) => send(`${JIRA_HOST}/secure/${path}?id=${issueId}`);
   // The parent form redirects to a session timeout unless the Move wizard was
   // opened first in the same session, and its atl_token is tied to that session.
-  const start = await page("MoveSubTaskChooseOperation!default.jspa");
-  const cookie = start.headers
-    .getSetCookie()
-    .map((c) => c.split(";")[0])
-    .join("; ");
-  const form = await page("MoveSubTaskParent!default.jspa", cookie);
+  await page("MoveSubTaskChooseOperation!default.jspa");
+  const form = await page("MoveSubTaskParent!default.jspa");
   const token = (await form.text()).match(
     /name="atl_token"\s+value="([^"]+)"/,
   )?.[1];
@@ -29,27 +23,19 @@ export const moveSubtaskParent = async (issueId, parentKey) => {
     );
   }
 
-  const res = await fetch(`${JIRA_HOST}/secure/MoveSubTaskParent.jspa`, {
-    body: new URLSearchParams({
+  const res = await send(
+    `${JIRA_HOST}/secure/MoveSubTaskParent.jspa`,
+    new URLSearchParams({
       atl_token: token,
       "Change Parent": "Change Parent",
       id: String(issueId),
       parentIssue: parentKey,
     }).toString(),
-    headers: {
-      Authorization: AUTH_HEADER,
-      "Content-Type": "application/x-www-form-urlencoded",
-      Cookie: cookie,
-    },
-    method: "POST",
-    redirect: "manual",
-  });
+  );
   // Success redirects to the issue; a rejected parent re-renders the form
   // with the reason in an error element.
   if (res.status !== 302) {
-    const reason = (await res.text())
-      .match(/class="error[^"]*"[^>]*>([^<]+)</)?.[1]
-      ?.trim();
+    const reason = formErrors(await res.text());
     throw new Error(
       `Jira rejected the parent change to ${parentKey} (HTTP ${res.status})` +
         (reason ? `: ${reason}` : ""),

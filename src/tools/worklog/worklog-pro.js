@@ -1,4 +1,5 @@
-import {AUTH_HEADER, JIRA_HOST, jiraRequest} from "../../jira-client.js";
+import {JIRA_HOST} from "../../jira-client.js";
+import {formErrors, formSession} from "../../web-form.js";
 
 // WorklogPRO (Deniz) work-type / activity ids, keyed by user-friendly aliases.
 // Ids are the option values of the form's wa_1 / wa_2 selects. Id 8 is the
@@ -100,11 +101,11 @@ const worklogDates = (iso) => {
   };
 };
 
-const restLogWork = async (ticketId, timeSpent, {comment, started}) => {
+const restLogWork = async (jira, ticketId, timeSpent, {comment, started}) => {
   const body = {timeSpent};
   if (started) body.started = started;
   if (comment) body.comment = comment;
-  const worklog = await jiraRequest("POST", `/issue/${ticketId}/worklog`, body);
+  const worklog = await jira("POST", `/issue/${ticketId}/worklog`, body);
   return {id: worklog?.id};
 };
 
@@ -113,36 +114,38 @@ const restLogWork = async (ticketId, timeSpent, {comment, started}) => {
 // fallback once attributes are asked for: a worklog without them has to be
 // fixed by hand in the Jira UI, while a failure before posting is safe to retry.
 /**
+ * @param {Function} jira jiraRequest, used for the REST path
  * @param {string} ticketId
  * @param {string} timeSpent
  * @param {{activity?: string, comment?: string, started?: string, workType?: string}} [opts] aliases, e.g. workType "dev", activity "review"
  * @returns {Promise<{id?: string}>} id only on the REST path; the form returns none
  */
-export const logWorkPro = async (ticketId, timeSpent, opts = {}) => {
+export const logWorkPro = async (jira, ticketId, timeSpent, opts = {}) => {
   const {comment, started} = opts;
   const workType = resolveAlias(WORK_TYPES, opts.workType, "work_type");
   const activity = resolveAlias(ACTIVITIES, opts.activity, "activity");
   // No attributes requested → plain REST worklog. The WorklogPRO form mandates
   // Type of Activity, so routing an attribute-less log through it would fail.
   if (workType == null && activity == null) {
-    return restLogWork(ticketId, timeSpent, {comment, started});
+    return restLogWork(jira, ticketId, timeSpent, {comment, started});
   }
-  const formRes = await fetch(
+  // The atl_token must match the session's atlassian.xsrf.token cookie, so the
+  // POST goes through the same session as this GET.
+  const send = formSession();
+  // shortcut: whether these WorklogPRO URLs redirect is unchecked, so they keep
+  // fetch's follow; drop it once a live Jira shows a redirect-free flow.
+  /** @type {RequestInit} */
+  const follow = {redirect: "follow"};
+  const formRes = await send(
     `${JIRA_HOST}/secure/WPCreateWorklogOnIssueWithWorkLogAction!default.jspa?issueKey=${encodeURIComponent(ticketId)}&decorator=dialog&inline=true`,
-    {headers: {Accept: "text/html,*/*", Authorization: AUTH_HEADER}},
+    undefined,
+    {...follow, headers: {Accept: "text/html,*/*"}},
   );
   if (!formRes.ok) {
     throw new Error(
       `WorklogPRO form unavailable (HTTP ${formRes.status}); nothing was logged, safe to retry`,
     );
   }
-  // The atl_token must match the session's atlassian.xsrf.token cookie; Basic
-  // Auth makes a fresh session per request, so the POST has to reuse the cookies
-  // the GET set or Jira rejects it with "XSRF Security Token Missing".
-  const cookie = formRes.headers
-    .getSetCookie()
-    .map((c) => c.split(";")[0])
-    .join("; ");
   const formHtml = await formRes.text();
   const tokenMatch = formHtml.match(/atl_token=([A-Za-z0-9%_-]+)/);
   if (!tokenMatch) throw new Error("WorklogPRO: CSRF token not found");
@@ -168,17 +171,10 @@ export const logWorkPro = async (ticketId, timeSpent, opts = {}) => {
   if (activity != null) params.set("wa_2", String(activity));
   if (comment) params.set("comment", comment);
 
-  const postRes = await fetch(
+  const postRes = await send(
     `${JIRA_HOST}/secure/WPCreateWorklogOnIssueWithWorkLogAction.jspa?atl_token=${atlToken}`,
-    {
-      body: params.toString(),
-      headers: {
-        Authorization: AUTH_HEADER,
-        "Content-Type": "application/x-www-form-urlencoded",
-        Cookie: cookie,
-      },
-      method: "POST",
-    },
+    params.toString(),
+    follow,
   );
   // No REST fallback here: a failed POST may still have created the worklog,
   // and replaying it would log the time twice (same rule as jiraRequest).
@@ -200,37 +196,4 @@ export const logWorkPro = async (ticketId, timeSpent, opts = {}) => {
     );
   }
   return {};
-};
-
-// Field errors are class="error"; the banner is class="aui-message
-// aui-message-error" with its text in nested tags, so each block is read up to
-// its balanced closing tag rather than to the first "<".
-const ERROR_OPEN =
-  /<(\w+)[^>]*\bclass="(?:[^"]*\s)?(?:aui-message-)?error(?:\s[^"]*)?"[^>]*>/gi;
-const textOf = (html) =>
-  html
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-const formErrors = (html) => {
-  const reasons = new Set();
-  let end = 0;
-  for (const open of html.matchAll(ERROR_OPEN)) {
-    if (open.index < end) continue; // nested in a block already read
-    const start = open.index + open[0].length;
-    const tag = new RegExp(`<(/?)${open[1]}\\b[^>]*>`, "gi");
-    tag.lastIndex = start;
-    let depth = 1;
-    end = html.length;
-    for (let m = tag.exec(html); m; m = tag.exec(html)) {
-      depth += m[1] ? -1 : 1;
-      if (!depth) {
-        end = m.index;
-        break;
-      }
-    }
-    const text = textOf(html.slice(start, end)).slice(0, 300);
-    if (text) reasons.add(text);
-  }
-  return [...reasons].join("; ");
 };

@@ -37,9 +37,9 @@ const stubJira = ({form = 200, submit = 200, submitBody = "ok"} = {}) => {
   return calls;
 };
 
-const logWork = (args) => {
+const logWork = (args, jira) => {
   const server = fakeServer();
-  registerLogWork(server);
+  registerLogWork(server, jira);
   return server.tools.get("log_work")({
     ticket_id: "GEM-1",
     time_spent: "2h",
@@ -130,7 +130,15 @@ test("log_work rejects an unknown alias before any request", async () => {
 
 test("log_work without attributes logs over plain REST", async () => {
   const calls = stubJira();
-  const {content} = await logWork({});
-  assert.deepEqual(calls, ["rest"]);
+  const requests = [];
+  const {content} = await logWork({}, async (...req) => {
+    requests.push(req);
+    return {id: "777"};
+  });
+  assert.deepEqual(requests, [
+    ["POST", "/issue/GEM-1/worklog", {timeSpent: "2h"}],
+  ]);
+  // The form flow stays untouched on the REST path.
+  assert.deepEqual(calls, []);
   assert.equal(content[0].text, "Logged 2h on GEM-1 (worklog id: 777)");
 });

@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {registerUpdateTicket} from "../../src/tools/ticket/update.js";
 import {fakeServer} from "../helpers/fake-server.js";
+
+// The wizard URL starts from JIRA_HOST, read when jira-client.js loads, so set
+// it before the import; otherwise the tests depend on a local .env.
+process.env.JIRA_HOST = "https://jira.test";
+const {registerUpdateTicket} = await import("../../src/tools/ticket/update.js");
 
 const page = (action, fields, submit, text = "") =>
   `<form action="${action}" method="post" name="jiraform">${text}${fields}` +
@@ -20,7 +24,8 @@ const stubConvertWizard = (confirmText = "Type Sub-task Task", afterType) => {
       ? page(
           "ConvertSubTaskSetIssueType.jspa",
           '<select name="issuetype"><option value="10100">Task</option></select>' +
-            '<input type="hidden" name="id" value="1001"><input type="hidden" name="guid" value="7">',
+            '<input type="hidden" name="id" value="1001"><input type="hidden" name="guid" value="7">' +
+            '<input type="hidden" name="note" value="&quot;a&quot; &#39;b&#39; &lt;c&gt; &amp;lt;">',
           "Next &gt;&gt;",
         )
       : afterType && at("SetIssueType")
@@ -98,7 +103,30 @@ test("update_ticket converts a sub-task to a standard type through Jira's wizard
   const chosen = new URLSearchParams(sent[1].body);
   assert.equal(chosen.get("issuetype"), "10100");
   assert.equal(chosen.get("guid"), "7");
+  // Pre-filled values go back as the text the page showed, not as entities.
+  assert.equal(chosen.get("note"), `"a" 'b' <c> &lt;`);
   assert.equal(sent[2].cookie, "JSESSIONID=s1");
+});
+
+test("update_ticket says the type changed when the later field save fails", async () => {
+  const sent = stubConvertWizard();
+  const server = fakeServer();
+  const jira = subtaskJira(sent, []);
+  registerUpdateTicket(server, async (method, path, body) => {
+    if (method === "PUT") throw new Error("Jira API 400: priority");
+    return jira(method, path, body);
+  });
+  const result = await server.tools.get("update_ticket")({
+    issue_type: "Task",
+    priority: "Hgh",
+    ticket_id: "GEM-1",
+  });
+
+  assert.equal(result.isError, true);
+  assert.match(
+    result.content[0].text,
+    /^GEM-1: changed issue type to "Task", but the other fields were not saved: Jira API 400: priority$/,
+  );
 });
 
 test("update_ticket never finishes a type change that would delete field values", async () => {

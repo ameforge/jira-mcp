@@ -10,7 +10,7 @@
     "tagName": "jira-v${version}"
   },
   "github": {
-    "release": true,
+    "release": false,
     "releaseName": "jira-mcp v${version}"
   },
   "hooks": {
