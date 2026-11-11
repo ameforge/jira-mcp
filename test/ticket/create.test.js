@@ -8,13 +8,13 @@ const create = async (params, {failEstimate = false} = {}) => {
   const calls = [];
   registerCreateTicket(server, async (method, path, body) => {
     calls.push({body, method, path});
-    if (method === "POST") return {key: "GEM-7"};
+    if (method === "POST") return {key: "PROJ-7"};
     if (failEstimate) throw new Error("Jira API 500: boom");
     return null;
   });
   const result = await server.tools.get("create_ticket")({
     issue_type: "Sub-task",
-    project: "GEM",
+    project: "PROJ",
     summary: "s",
     ...params,
   });
@@ -28,14 +28,14 @@ test("create_ticket keeps timetracking out of the create payload", async () => {
   assert.deepEqual(calls[1], {
     body: {update: {timetracking: [{edit: {originalEstimate: "8h"}}]}},
     method: "PUT",
-    path: "/issue/GEM-7",
+    path: "/issue/PROJ-7",
   });
 });
 
 test("create_ticket makes no second call without an estimate", async () => {
   const {calls, result} = await create({});
   assert.equal(calls.length, 1);
-  assert.match(result.content[0].text, /^Created GEM-7: /);
+  assert.match(result.content[0].text, /^Created PROJ-7: /);
 });
 
 test("create_ticket still reports the key when the estimate fails", async () => {
@@ -46,7 +46,7 @@ test("create_ticket still reports the key when the estimate fails", async () => 
     },
   );
   assert.notEqual(result.isError, true);
-  assert.match(result.content[0].text, /Created GEM-7/);
+  assert.match(result.content[0].text, /Created PROJ-7/);
   assert.match(result.content[0].text, /was not applied/);
   assert.match(result.content[0].text, /update_ticket/);
 });

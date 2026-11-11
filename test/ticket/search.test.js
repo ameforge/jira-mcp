@@ -18,11 +18,11 @@ const search = (issues) => {
 };
 
 test("search_tickets drops columns that are empty for every row", async () => {
-  const call = search([issue("GEM-1"), issue("GEM-2")]);
-  const text = (await call({jql: "project = GEM"})).content[0].text;
+  const call = search([issue("PROJ-1"), issue("PROJ-2")]);
+  const text = (await call({jql: "project = PROJ"})).content[0].text;
 
   assert.match(text, /^KEY \| Summary \| Status \| Assignee$/m);
-  assert.match(text, /^GEM-1 \| S-GEM-1 \| Open \| Unassigned$/m);
+  assert.match(text, /^PROJ-1 \| S-PROJ-1 \| Open \| Unassigned$/m);
   // Named once so the caller can tell "nobody set one" from "not available".
   assert.match(
     text,
@@ -32,40 +32,43 @@ test("search_tickets drops columns that are empty for every row", async () => {
 
 test("search_tickets keeps a column when any single row fills it", async () => {
   const call = search([
-    issue("GEM-1"),
-    issue("GEM-2", {duedate: "2026-02-01"}),
+    issue("PROJ-1"),
+    issue("PROJ-2", {duedate: "2026-02-01"}),
   ]);
-  const text = (await call({jql: "project = GEM"})).content[0].text;
+  const text = (await call({jql: "project = PROJ"})).content[0].text;
 
   assert.match(text, /^KEY \| Summary \| Status \| Assignee \| Due Date$/m);
-  assert.match(text, /^GEM-1 \| S-GEM-1 \| Open \| Unassigned \| -$/m);
-  assert.match(text, /^GEM-2 \| S-GEM-2 \| Open \| Unassigned \| 2026-02-01$/m);
+  assert.match(text, /^PROJ-1 \| S-PROJ-1 \| Open \| Unassigned \| -$/m);
+  assert.match(
+    text,
+    /^PROJ-2 \| S-PROJ-2 \| Open \| Unassigned \| 2026-02-01$/m,
+  );
 });
 
 test("search_tickets states a column shared by every row once, not per row", async () => {
   const call = search([
-    issue("GEM-1", {priority: {name: "High"}}),
-    issue("GEM-2", {priority: {name: "High"}}),
-    issue("GEM-3", {priority: {name: "High"}}),
+    issue("PROJ-1", {priority: {name: "High"}}),
+    issue("PROJ-2", {priority: {name: "High"}}),
+    issue("PROJ-3", {priority: {name: "High"}}),
   ]);
-  const text = (await call({jql: "project = GEM"})).content[0].text;
+  const text = (await call({jql: "project = PROJ"})).content[0].text;
 
   assert.match(text, /All: Status=Open, Assignee=Unassigned, Priority=High/);
   assert.match(text, /^KEY \| Summary$/m);
-  assert.match(text, /^GEM-1 \| S-GEM-1$/m);
+  assert.match(text, /^PROJ-1 \| S-PROJ-1$/m);
 });
 
 test("search_tickets keeps a partly-filled column out of the shared line", async () => {
   const call = search([
-    issue("GEM-1", {parent: {key: "GEM-9"}}),
-    issue("GEM-2", {parent: {key: "GEM-9"}}),
-    issue("GEM-3"),
+    issue("PROJ-1", {parent: {key: "PROJ-9"}}),
+    issue("PROJ-2", {parent: {key: "PROJ-9"}}),
+    issue("PROJ-3"),
   ]);
-  const text = (await call({jql: "project = GEM"})).content[0].text;
+  const text = (await call({jql: "project = PROJ"})).content[0].text;
 
   assert.doesNotMatch(text, /All:.*Parent/);
   assert.match(text, /^KEY \| Summary \| Parent$/m);
-  assert.match(text, /^GEM-3 \| S-GEM-3 \| -$/m);
+  assert.match(text, /^PROJ-3 \| S-PROJ-3 \| -$/m);
 });
 
 test("search_tickets reports an empty result set", async () => {

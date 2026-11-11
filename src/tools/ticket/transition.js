@@ -40,7 +40,7 @@ export const registerTransitionTicket = (server, jiraRequest) => {
         status: z
           .string()
           .describe('Target status name, e.g. "In Progress", "Done"'),
-        ticket_id: z.string().describe("Jira issue key, e.g. GEM-234"),
+        ticket_id: z.string().describe("Jira issue key, e.g. PROJ-234"),
       }),
     },
     async ({ticket_id, status}, jira) => {

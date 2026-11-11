@@ -8,7 +8,7 @@ export const registerAddWatcher = (server, jiraRequest) => {
     {
       description: "Add a user as a watcher of a Jira ticket",
       inputSchema: z.object({
-        ticket_id: z.string().describe("Jira issue key, e.g. GEM-234"),
+        ticket_id: z.string().describe("Jira issue key, e.g. PROJ-234"),
         // min(1): an empty string is falsy, so jiraRequest would send no body.
         username: z.string().min(1).describe("Jira username to add"),
       }),

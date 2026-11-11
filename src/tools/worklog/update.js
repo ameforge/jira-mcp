@@ -18,7 +18,7 @@ export const registerUpdateWorklog = (server, jiraRequest) => {
           .string()
           .optional()
           .describe("Start datetime ISO, e.g. '2026-06-29T09:00:00.000+0700'"),
-        ticket_id: z.string().describe("Jira issue key, e.g. GEM-234"),
+        ticket_id: z.string().describe("Jira issue key, e.g. PROJ-234"),
         time_spent: z
           .string()
           .optional()

@@ -2,6 +2,7 @@ import {z} from "zod";
 import {defineTool} from "../../define-tool.js";
 import {EPIC_LINK_FIELD, START_DATE_FIELD} from "../../ticket-fields.js";
 import {withIssueTypes} from "../../valid-names.js";
+import {formSession} from "../../web-form.js";
 import {planTypeChange, runTypeWizard} from "./change-type.js";
 import {moveSubtaskParent} from "./move-subtask.js";
 
@@ -23,7 +24,11 @@ const verifyFieldApplied = async (
   }
 };
 
-export const registerUpdateTicket = (server, jiraRequest) => {
+export const registerUpdateTicket = (
+  server,
+  jiraRequest,
+  forms = formSession,
+) => {
   defineTool(
     server,
     "update_ticket",
@@ -80,7 +85,7 @@ export const registerUpdateTicket = (server, jiraRequest) => {
           .optional()
           .describe("Start date YYYY-MM-DD, or empty string to clear"),
         summary: z.string().optional().describe("Replace ticket summary/title"),
-        ticket_id: z.string().describe("Jira issue key, e.g. GEM-234"),
+        ticket_id: z.string().describe("Jira issue key, e.g. PROJ-234"),
       }),
     },
     async (
@@ -160,7 +165,7 @@ export const registerUpdateTicket = (server, jiraRequest) => {
       // What the wizards already changed, for an error after them.
       const changed = [];
       if (typePlan) {
-        await runTypeWizard(typePlan);
+        await runTypeWizard(forms, typePlan);
         changed.push(`issue type to "${issue_type}"`);
       }
       if (parent_key !== undefined) {
@@ -171,7 +176,7 @@ export const registerUpdateTicket = (server, jiraRequest) => {
         // A sub-task keeps its old parent after the PUT; Jira only re-parents
         // it through the Move form.
         if (current.parent && current.parent.key !== parent_key) {
-          await moveSubtaskParent(id, parent_key);
+          await moveSubtaskParent(forms, id, parent_key);
           changed.push(`parent to ${parent_key}`);
         }
       }

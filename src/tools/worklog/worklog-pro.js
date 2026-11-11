@@ -1,6 +1,3 @@
-import {JIRA_HOST} from "../../jira-client.js";
-import {formErrors, formSession} from "../../web-form.js";
-
 // WorklogPRO (Deniz) work-type / activity ids, keyed by user-friendly aliases.
 // Ids are the option values of the form's wa_1 / wa_2 selects. Id 8 is the
 // Correction activity, not a work type, so "fix" belongs to ACTIVITIES only.
@@ -115,12 +112,19 @@ const restLogWork = async (jira, ticketId, timeSpent, {comment, started}) => {
 // fixed by hand in the Jira UI, while a failure before posting is safe to retry.
 /**
  * @param {Function} jira jiraRequest, used for the REST path
+ * @param {typeof import("../../web-form.js").formSession} forms used for the WorklogPRO form
  * @param {string} ticketId
  * @param {string} timeSpent
  * @param {{activity?: string, comment?: string, started?: string, workType?: string}} [opts] aliases, e.g. workType "dev", activity "review"
  * @returns {Promise<{id?: string}>} id only on the REST path; the form returns none
  */
-export const logWorkPro = async (jira, ticketId, timeSpent, opts = {}) => {
+export const logWorkPro = async (
+  jira,
+  forms,
+  ticketId,
+  timeSpent,
+  opts = {},
+) => {
   const {comment, started} = opts;
   const workType = resolveAlias(WORK_TYPES, opts.workType, "work_type");
   const activity = resolveAlias(ACTIVITIES, opts.activity, "activity");
@@ -131,30 +135,22 @@ export const logWorkPro = async (jira, ticketId, timeSpent, opts = {}) => {
   }
   // The atl_token must match the session's atlassian.xsrf.token cookie, so the
   // POST goes through the same session as this GET.
-  const send = formSession();
-  // shortcut: whether these WorklogPRO URLs redirect is unchecked, so they keep
-  // fetch's follow; drop it once a live Jira shows a redirect-free flow.
-  /** @type {RequestInit} */
-  const follow = {redirect: "follow"};
-  const formRes = await send(
-    `${JIRA_HOST}/secure/WPCreateWorklogOnIssueWithWorkLogAction!default.jspa?issueKey=${encodeURIComponent(ticketId)}&decorator=dialog&inline=true`,
-    undefined,
-    {...follow, headers: {Accept: "text/html,*/*"}},
+  const session = forms();
+  const form = await session.open(
+    `/secure/WPCreateWorklogOnIssueWithWorkLogAction!default.jspa?issueKey=${encodeURIComponent(ticketId)}&decorator=dialog&inline=true`,
   );
-  if (!formRes.ok) {
+  if (!form.ok) {
     throw new Error(
-      `WorklogPRO form unavailable (HTTP ${formRes.status}); nothing was logged, safe to retry`,
+      `WorklogPRO form unavailable (HTTP ${form.status}); nothing was logged, safe to retry`,
     );
   }
-  const formHtml = await formRes.text();
-  const tokenMatch = formHtml.match(/atl_token=([A-Za-z0-9%_-]+)/);
-  if (!tokenMatch) throw new Error("WorklogPRO: CSRF token not found");
-  const atlToken = tokenMatch[1];
+  if (!form.token) throw new Error("WorklogPRO: CSRF token not found");
 
   // The form pre-fills the current time in the exact formats Jira expects; reuse
   // them as defaults so a worklog without an explicit start still posts.
   const fieldValue = (name) =>
-    formHtml.match(new RegExp(`name="${name}"[^>]*value="([^"]*)"`))?.[1] ?? "";
+    form.html.match(new RegExp(`name="${name}"[^>]*value="([^"]*)"`))?.[1] ??
+    "";
   const dates = started ? worklogDates(started) : null;
 
   const params = new URLSearchParams({
@@ -171,28 +167,25 @@ export const logWorkPro = async (jira, ticketId, timeSpent, opts = {}) => {
   if (activity != null) params.set("wa_2", String(activity));
   if (comment) params.set("comment", comment);
 
-  const postRes = await send(
-    `${JIRA_HOST}/secure/WPCreateWorklogOnIssueWithWorkLogAction.jspa?atl_token=${atlToken}`,
-    params.toString(),
-    follow,
+  const post = await session.submit(
+    `/secure/WPCreateWorklogOnIssueWithWorkLogAction.jspa?atl_token=${form.token}`,
+    params,
   );
   // No REST fallback here: a failed POST may still have created the worklog,
   // and replaying it would log the time twice (same rule as jiraRequest).
-  if (!postRes.ok) {
+  if (!post.ok) {
     throw new Error(
-      `WorklogPRO: submit failed (HTTP ${postRes.status}); do not retry, the worklog may already exist: ask the user to check the Work Log tab of ${ticketId} in Jira`,
+      `WorklogPRO: submit failed (HTTP ${post.status}); do not retry, the worklog may already exist: ask the user to check the Work Log tab of ${ticketId} in Jira`,
     );
   }
-  const body = await postRes.text();
-  if (body.includes("XSRF Security Token Missing")) {
+  if (post.html.includes("XSRF Security Token Missing")) {
     throw new Error("WorklogPRO: XSRF token rejected");
   }
   // A successful submit renders no form error; any error element (e.g.
   // "Type of Activity is required") means the worklog was not created.
-  const reasons = formErrors(body);
-  if (reasons || body.includes("aui-message-error")) {
+  if (post.errors || post.html.includes("aui-message-error")) {
     throw new Error(
-      `WorklogPRO: ${reasons || "the form reported an error without readable text"}; nothing was logged, fix the input and retry`,
+      `WorklogPRO: ${post.errors || "the form reported an error without readable text"}; nothing was logged, fix the input and retry`,
     );
   }
   return {};

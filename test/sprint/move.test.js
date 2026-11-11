@@ -6,7 +6,7 @@ import {fakeServer} from "../helpers/fake-server.js";
 const AGILE = "/rest/agile/1.0";
 // A kanban board rejects the sprint listing, so it must never be asked.
 const ROUTES = {
-  [`${AGILE}/board?projectKeyOrId=GEM`]: {
+  [`${AGILE}/board?projectKeyOrId=PROJ`]: {
     values: [
       {id: 1, type: "kanban"},
       {id: 2, type: "scrum"},
@@ -14,8 +14,8 @@ const ROUTES = {
   },
   [`${AGILE}/board/2/sprint?state=active,future`]: {
     values: [
-      {id: 41, name: "GEM Sprint 12", state: "active"},
-      {id: 42, name: "GEM Sprint 13", state: "future"},
+      {id: 41, name: "PROJ Sprint 12", state: "active"},
+      {id: 42, name: "PROJ Sprint 13", state: "future"},
     ],
   },
 };
@@ -35,34 +35,34 @@ const move = async (args) => {
 
 test("move_to_sprint resolves a sprint name on the project's scrum boards", async () => {
   const {isError, requests, text} = await move({
-    sprint: "gem sprint 13",
-    ticket_ids: ["gem-1", "GEM-2"],
+    sprint: "proj sprint 13",
+    ticket_ids: ["proj-1", "PROJ-2"],
   });
   assert.equal(isError, undefined);
   assert.deepEqual(requests.at(-1), [
     "POST",
     `${AGILE}/sprint/42/issue`,
-    {issues: ["GEM-1", "GEM-2"]},
+    {issues: ["PROJ-1", "PROJ-2"]},
   ]);
-  assert.equal(text, "Moved GEM-1, GEM-2 to sprint GEM Sprint 13");
+  assert.equal(text, "Moved PROJ-1, PROJ-2 to sprint PROJ Sprint 13");
 });
 
 test("move_to_sprint posts a numeric sprint ID without looking it up", async () => {
-  const {requests} = await move({sprint: "42", ticket_ids: ["GEM-1"]});
+  const {requests} = await move({sprint: "42", ticket_ids: ["PROJ-1"]});
   assert.deepEqual(requests, [
-    ["POST", `${AGILE}/sprint/42/issue`, {issues: ["GEM-1"]}],
+    ["POST", `${AGILE}/sprint/42/issue`, {issues: ["PROJ-1"]}],
   ]);
 });
 
 test("move_to_sprint moves nothing and lists open sprints for an unknown name", async () => {
   const {isError, requests, text} = await move({
     sprint: "Sprint 99",
-    ticket_ids: ["GEM-1"],
+    ticket_ids: ["PROJ-1"],
   });
   assert.equal(isError, true);
   assert.ok(requests.every(([method]) => method === "GET"));
   assert.match(
     text,
-    /Open sprints: GEM Sprint 12 \(41, active\); GEM Sprint 13 \(42, future\)/,
+    /Open sprints: PROJ Sprint 12 \(41, active\); PROJ Sprint 13 \(42, future\)/,
   );
 });

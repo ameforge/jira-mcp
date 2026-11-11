@@ -10,7 +10,7 @@ export const registerAddComment = (server, jiraRequest) => {
       description: "Add a comment to a Jira ticket",
       inputSchema: z.object({
         body: z.string().describe("Comment text (plain text)"),
-        ticket_id: z.string().describe("Jira issue key, e.g. GEM-234"),
+        ticket_id: z.string().describe("Jira issue key, e.g. PROJ-234"),
       }),
     },
     async ({ticket_id, body}, jira) => {

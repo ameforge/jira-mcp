@@ -6,13 +6,13 @@ testRequests([
   [
     registerUpdateComment,
     "update_comment",
-    {body: "fixed typo", comment_id: "10001", ticket_id: "GEM-1"},
-    ["PUT", "/issue/GEM-1/comment/10001", {body: "fixed typo"}],
+    {body: "fixed typo", comment_id: "10001", ticket_id: "PROJ-1"},
+    ["PUT", "/issue/PROJ-1/comment/10001", {body: "fixed typo"}],
   ],
   [
     registerDeleteComment,
     "delete_comment",
-    {comment_id: "10001", ticket_id: "GEM-1"},
-    ["DELETE", "/issue/GEM-1/comment/10001"],
+    {comment_id: "10001", ticket_id: "PROJ-1"},
+    ["DELETE", "/issue/PROJ-1/comment/10001"],
   ],
 ]);

@@ -20,14 +20,14 @@ const stubFetch = (statuses, okBody = '{"ok":true}') => {
 
 test("jiraRequest retries a replayable request through two 5xx", async () => {
   const calls = stubFetch([500, 503, 200]);
-  assert.deepEqual(await jiraRequest("GET", "/issue/GEM-1"), {ok: true});
+  assert.deepEqual(await jiraRequest("GET", "/issue/PROJ-1"), {ok: true});
   assert.equal(calls.length, 3);
 });
 
 test("jiraRequest gives up after two retries", async () => {
   const calls = stubFetch([500, 500, 500]);
   await assert.rejects(
-    () => jiraRequest("GET", "/issue/GEM-1"),
+    () => jiraRequest("GET", "/issue/PROJ-1"),
     /Jira API 500: server exploded/,
   );
   assert.equal(calls.length, 3);
@@ -36,7 +36,7 @@ test("jiraRequest gives up after two retries", async () => {
 test("jiraRequest does not retry a 4xx", async () => {
   const calls = stubFetch([400]);
   await assert.rejects(
-    () => jiraRequest("GET", "/issue/GEM-1"),
+    () => jiraRequest("GET", "/issue/PROJ-1"),
     /Jira API 400/,
   );
   assert.equal(calls.length, 1);
@@ -45,7 +45,7 @@ test("jiraRequest does not retry a 4xx", async () => {
 test("jiraRequest does not replay a POST", async () => {
   const calls = stubFetch([500]);
   await assert.rejects(
-    () => jiraRequest("POST", "/issue/GEM-1/comment", {body: "hi"}),
+    () => jiraRequest("POST", "/issue/PROJ-1/comment", {body: "hi"}),
     /Jira API 500/,
   );
   assert.equal(calls.length, 1);
@@ -65,10 +65,10 @@ test("jiraRequest sends /rest/ paths to the host, others under /rest/api/2", asy
     urls.push(url);
     return {ok: true, status: 200, text: async () => "{}"};
   };
-  await jiraRequest("GET", "/issue/GEM-1");
+  await jiraRequest("GET", "/issue/PROJ-1");
   await jiraRequest("GET", "/rest/agile/1.0/board");
   assert.deepEqual(urls, [
-    `${JIRA_HOST}/rest/api/2/issue/GEM-1`,
+    `${JIRA_HOST}/rest/api/2/issue/PROJ-1`,
     `${JIRA_HOST}/rest/agile/1.0/board`,
   ]);
 });

@@ -6,13 +6,13 @@ testRequests([
   [
     registerAddWatcher,
     "add_watcher",
-    {ticket_id: "GEM-1", username: "jdoe"},
-    ["POST", "/issue/GEM-1/watchers", "jdoe"],
+    {ticket_id: "PROJ-1", username: "jdoe"},
+    ["POST", "/issue/PROJ-1/watchers", "jdoe"],
   ],
   [
     registerRemoveWatcher,
     "remove_watcher",
-    {ticket_id: "GEM-1", username: "j.doe@corp"},
-    ["DELETE", "/issue/GEM-1/watchers?username=j.doe%40corp"],
+    {ticket_id: "PROJ-1", username: "j.doe@corp"},
+    ["DELETE", "/issue/PROJ-1/watchers?username=j.doe%40corp"],
   ],
 ]);

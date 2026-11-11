@@ -21,7 +21,7 @@ const transitionTo = async (status, transitions = TRANSITIONS) => {
   });
   const result = await server.tools.get("transition_ticket")({
     status,
-    ticket_id: "GEM-1",
+    ticket_id: "PROJ-1",
   });
   return {posted, result};
 };
@@ -29,7 +29,7 @@ const transitionTo = async (status, transitions = TRANSITIONS) => {
 test('transition_ticket maps "Closed" onto the workflow\'s Done', async () => {
   const {posted, result} = await transitionTo("Closed");
   assert.deepEqual(posted, ["21"]);
-  assert.equal(result.content[0].text, 'GEM-1 transitioned to "Done"');
+  assert.equal(result.content[0].text, 'PROJ-1 transitioned to "Done"');
 });
 
 test("transition_ticket matches the target status, not just the transition name", async () => {

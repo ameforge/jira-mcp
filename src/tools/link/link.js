@@ -11,14 +11,14 @@ export const registerLinkIssues = (server, jiraRequest) => {
       inputSchema: z.object({
         inward_issue: z
           .string()
-          .describe("Issue key being linked FROM, e.g. GEM-1"),
+          .describe("Issue key being linked FROM, e.g. PROJ-1"),
         link_type: z
           .string()
           .default("Blocks")
           .describe("Link type: Blocks, Clones, Relates to, Duplicate, etc."),
         outward_issue: z
           .string()
-          .describe("Issue key being linked TO, e.g. GEM-2"),
+          .describe("Issue key being linked TO, e.g. PROJ-2"),
       }),
     },
     async ({inward_issue, outward_issue, link_type}, jira) => {

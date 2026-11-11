@@ -10,7 +10,7 @@ export const registerDeleteComment = (server, jiraRequest) => {
         "Delete a comment from a Jira ticket. This cannot be undone. Comment IDs are shown by get_ticket with include_comments.",
       inputSchema: z.object({
         comment_id: z.string().describe("Comment ID, e.g. 10001"),
-        ticket_id: z.string().describe("Jira issue key, e.g. GEM-234"),
+        ticket_id: z.string().describe("Jira issue key, e.g. PROJ-234"),
       }),
     },
     async ({ticket_id, comment_id}, jira) => {

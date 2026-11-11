@@ -22,8 +22,8 @@ export const registerUnlinkIssues = (server, jiraRequest) => {
           ),
         linked_ticket_id: z
           .string()
-          .describe("The other issue key, e.g. GEM-2"),
-        ticket_id: z.string().describe("Jira issue key, e.g. GEM-1"),
+          .describe("The other issue key, e.g. PROJ-2"),
+        ticket_id: z.string().describe("Jira issue key, e.g. PROJ-1"),
       }),
     },
     async ({ticket_id, linked_ticket_id, link_type}, jira) => {

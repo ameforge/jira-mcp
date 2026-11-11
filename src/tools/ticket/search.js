@@ -25,7 +25,7 @@ export const registerSearchTickets = (server, jiraRequest) => {
         jql: z
           .string()
           .describe(
-            "JQL query, e.g. 'project = GEM AND status = \"In Progress\"'",
+            "JQL query, e.g. 'project = PROJ AND status = \"In Progress\"'",
           ),
         max_results: z
           .number()

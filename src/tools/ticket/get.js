@@ -139,7 +139,7 @@ export const registerGetTicket = (
           .describe(
             "Include the ticket's worklogs with their IDs (default false, one extra request)",
           ),
-        ticket_id: z.string().describe("Jira issue key, e.g. GEM-234"),
+        ticket_id: z.string().describe("Jira issue key, e.g. PROJ-234"),
       }),
     },
     async (

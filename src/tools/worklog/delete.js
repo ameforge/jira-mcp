@@ -9,7 +9,7 @@ export const registerDeleteWorklog = (server, jiraRequest) => {
       description:
         "Delete a worklog from a Jira ticket. This cannot be undone. Worklog IDs are shown by get_ticket with include_worklogs.",
       inputSchema: z.object({
-        ticket_id: z.string().describe("Jira issue key, e.g. GEM-234"),
+        ticket_id: z.string().describe("Jira issue key, e.g. PROJ-234"),
         worklog_id: z.string().describe("Worklog ID, e.g. 20001"),
       }),
     },

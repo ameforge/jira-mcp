@@ -8,7 +8,7 @@ test("get_comment returns one comment and only the images it embeds", async () =
   const paths = [];
   const fakeJira = async (_method, path) => {
     paths.push(path);
-    if (path === "/issue/GEM-1/comment/10001") {
+    if (path === "/issue/PROJ-1/comment/10001") {
       return {
         author: {displayName: "Alice"},
         body: "see !a.png|width=520,height=278! and !b.png!",
@@ -33,20 +33,20 @@ test("get_comment returns one comment and only the images it embeds", async () =
   });
   const call = server.tools.get("get_comment");
 
-  const plain = await call({comment_id: "10001", ticket_id: "GEM-1"});
+  const plain = await call({comment_id: "10001", ticket_id: "PROJ-1"});
   assert.equal(
     plain.content[0].text,
     "#10001 [2026-09-30] Alice: see !a.png|width=520,height=278! and !b.png!",
   );
-  assert.deepEqual(paths, ["/issue/GEM-1/comment/10001"]);
+  assert.deepEqual(paths, ["/issue/PROJ-1/comment/10001"]);
 
   const {content} = await call({
     comment_id: "10001",
     include_images: true,
-    ticket_id: "GEM-1",
+    ticket_id: "PROJ-1",
   });
   // c.png belongs to the ticket but not to this comment.
   assert.deepEqual(downloads, ["u-a.png", "u-b.png"]);
   assert.equal(content.length, 3);
-  assert.equal(paths[2], "/issue/GEM-1?fields=attachment");
+  assert.equal(paths[2], "/issue/PROJ-1?fields=attachment");
 });

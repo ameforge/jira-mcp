@@ -99,6 +99,8 @@ curl -u user:pass https://jira.company.com/rest/api/2/field | jq '.[] | select(.
 | `add_watcher`            | Add a user as a watcher of a Jira ticket                                                          | `ticket_id`, `username`                                                                                                                                                                          |
 | `remove_watcher`         | Remove a user from the watchers of a Jira ticket                                                  | `ticket_id`, `username`                                                                                                                                                                          |
 | `move_to_sprint`         | Move tickets into an active or future sprint                                                      | `ticket_ids`, `sprint` (name or ID)                                                                                                                                                              |
+| `list_sprints`           | List the active and future sprints of a project, with their IDs                                   | `project`                                                                                                                                                                                        |
+| `find_user`              | Find users by part of a username, display name or email; returns the username                     | `query`, `max_results`                                                                                                                                                                           |
 | `add_attachment`         | Upload a local file to a Jira ticket as an attachment                                             | `ticket_id`, `file_path` (absolute)                                                                                                                                                              |
 | `delete_attachment`      | Delete an attachment from Jira (cannot be undone; IDs come from `get_ticket`)                     | `attachment_id`                                                                                                                                                                                  |
 | `download_attachment`    | Download a Jira attachment into a local directory (never overwrites; IDs come from `get_ticket`)  | `attachment_id`, `dir` (absolute)                                                                                                                                                                |
@@ -115,9 +117,9 @@ curl -u user:pass https://jira.company.com/rest/api/2/field | jq '.[] | select(.
 - `create_ticket` applies `original_estimate` in a follow-up PUT rather than in the create payload: Jira Data Center answers a bare `500 Internal server error` when `timetracking` is present in `POST /issue`, while the same value applies cleanly as an update afterwards. The ticket key is reported even if that second call fails, with a warning to set the estimate via `update_ticket` — so a failed estimate never sends you back to create a duplicate.
 - `duedate` is a standard field (`YYYY-MM-DD`); "Start date" is a custom field, configurable via `JIRA_START_DATE_FIELD`.
 - `update_ticket`'s `epic_key` sets the Epic Link field (a custom field, configurable via `JIRA_EPIC_LINK_FIELD`, default `customfield_10001`) so the ticket shows under the epic's "Issues in Epic" panel — not the same as `link_issues`, which only creates a generic Linked Issue (e.g. "Relates"). Epic Link can only be set on standard issue types (Story/Task/Bug), not on Sub-tasks or Epics themselves.
-- `search_tickets` uses JQL syntax, e.g. `project = GEM AND status = 'In Progress'`.
+- `search_tickets` uses JQL syntax, e.g. `project = PROJ AND status = 'In Progress'`.
 - `add_attachment` uploads one local file and returns its attachment ID. Pass an absolute `file_path`: a relative path resolves against the server process working directory, which the MCP client chooses. To show an uploaded image inline, reference it as `!filename.png!` in a comment or description. The server can read any file its user can read, so check the path before you approve the call.
-- `move_to_sprint` takes a sprint name or numeric ID. A name is looked up among the active and future sprints of the scrum boards of the first ticket's project (Agile API, `/rest/agile/1.0`); if it matches none, or several, nothing is moved and the error lists the open sprints with their IDs. To list a sprint's tickets, use `search_tickets` with JQL such as `sprint = "GEM Sprint 12"` or `sprint in openSprints()`.
+- `move_to_sprint` takes a sprint name or numeric ID. A name is looked up among the active and future sprints of the scrum boards of the first ticket's project (Agile API, `/rest/agile/1.0`); if it matches none, or several, nothing is moved and the error lists the open sprints with their IDs. To list a sprint's tickets, use `search_tickets` with JQL such as `sprint = "PROJ Sprint 12"` or `sprint in openSprints()`.
 - `transition_ticket` resolves the transition ID automatically, matching either the transition's own name ("Resolve Issue") or the status it lands on ("Done"). Common aliases map onto whatever the workflow actually offers (Closed/Resolved/Complete → Done, Reopen → Re-Open, Todo → To Do, Cancelled → Won't Do), so the same call works across workflows with different status names. Exact matches win, then aliases, then a substring fallback. When nothing matches, the error lists every valid option for that issue as `Transition -> Target Status`; the tool description cannot list them because they vary per issue and workflow.
 - When Jira rejects an unknown issue type (`create_ticket`, `update_ticket`, `search_tickets`) or link type (`link_issues`), the error also lists the valid names: the project's issue types when the project is known, every issue type for a JQL search, and every link type.
 - `update_ticket` only changes the fields you pass; omit a field to keep its current value. Pass `assignee=""` to unassign, and `due_date=""` or `start_date=""` to clear a date. `implementation_notes` appends to the description. Jira's REST API ignores a parent change on an existing sub-task, and rejects or ignores an issue type change to or from a sub-task type, so `update_ticket` makes those through the same Move/Convert wizards the Jira UI uses: sub-task to standard type, standard type to sub-task (needs `parent_key`), between sub-task types, and a new parent for a sub-task. It stops, changing nothing, when the new type's workflow lacks the ticket's current status (the error lists the statuses to pick from in the Jira UI), needs a required field, or would delete field values. A change between two standard types that REST does not apply still needs the Jira UI "Move" action.
@@ -130,11 +132,11 @@ curl -u user:pass https://jira.company.com/rest/api/2/field | jq '.[] | select(.
 
 ## Example prompts
 
-- "Search tickets in project GEM that are In Progress"
-- "Create a Story in GEM titled 'Release notes v2.0' due 2026-08-01"
-- "Update GEM-234, set the assignee to namcp and add label BugFix"
-- "Add a comment to GEM-234: 'Review done'"
-- "Generate release notes for fix version v2.4 in project GEM"
+- "Search tickets in project PROJ that are In Progress"
+- "Create a Story in PROJ titled 'Release notes v2.0' due 2026-08-01"
+- "Update PROJ-234, set the assignee to namcp and add label BugFix"
+- "Add a comment to PROJ-234: 'Review done'"
+- "Generate release notes for fix version v2.4 in project PROJ"
 
 ## Troubleshooting
 
@@ -142,7 +144,7 @@ curl -u user:pass https://jira.company.com/rest/api/2/field | jq '.[] | select(.
 - Connection/timeout: verify `JIRA_HOST` format (starts with `https://`, no trailing `/`), and whether VPN/internal network is required.
 - Start date not saving: confirm `JIRA_START_DATE_FIELD` matches your instance (see the discovery command above).
 - Error logs: every failed tool call is written to stderr with a timestamp and the tool name, and the startup line shows the server version. On Windows, Claude Code keeps this in `%LOCALAPPDATA%\claude-cli-nodejs\Cache\<project>\mcp-logs-<server name>\` (for example `mcp-logs-g-jira-mcp`).
-- Reporting a bug: open an issue at <https://github.com/pnam16/gem-jira-mcp/issues> with the server version, the tool you called and the matching log lines. Logs can contain ticket content and internal URLs, so remove anything sensitive before you post. Nothing is sent anywhere automatically.
+- Reporting a bug: open an issue at <https://github.com/ameforge/atlassian-mcp/issues> with the server version, the tool you called and the matching log lines. Logs can contain ticket content and internal URLs, so remove anything sensitive before you post. Nothing is sent anywhere automatically.
 
 ## Development
 
@@ -160,7 +162,7 @@ Questions or issues? Email [PNam](mailto:pnamhn16@gmail.com).
 
 If this project helps you, consider buying me a coffee:
 
-<img src="https://raw.githubusercontent.com/pnam16/gem-jira-mcp/main/docs/buy-me-a-coffee.jpg" alt="Buy Me A Coffee" width="300">
+<img src="https://raw.githubusercontent.com/ameforge/atlassian-mcp/main/docs/buy-me-a-coffee.jpg" alt="Buy Me A Coffee" width="300">
 
 ---
 

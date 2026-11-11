@@ -26,7 +26,7 @@ export const registerGetComment = (
           .describe(
             "Return the image attachments this comment embeds as viewable images (default false)",
           ),
-        ticket_id: z.string().describe("Jira issue key, e.g. GEM-234"),
+        ticket_id: z.string().describe("Jira issue key, e.g. PROJ-234"),
       }),
     },
     async ({ticket_id, comment_id, include_images}, jira) => {

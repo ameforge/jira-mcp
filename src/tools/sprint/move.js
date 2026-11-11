@@ -3,19 +3,34 @@ import {defineTool} from "../../define-tool.js";
 
 const AGILE = "/rest/agile/1.0";
 
+// Every page of an Agile API list. The first request keeps the plain path;
+// later ones add startAt until the page says isLast.
+const allPages = async (jira, path) => {
+  const values = [];
+  for (let url = path; url; ) {
+    const page = await jira("GET", url);
+    const got = page?.values ?? [];
+    values.push(...got);
+    url =
+      page?.isLast === false && got.length
+        ? `${path}&startAt=${values.length}`
+        : null;
+  }
+  return values;
+};
+
 // Callers know sprints by name, the Agile API only by ID. Collect the active
 // and future sprints of the scrum boards of the tickets' project; kanban
 // boards have no sprints and reject the sprint listing.
-// ponytail: first page of boards and sprints only (50 each), page if a project outgrows it.
-const openSprints = async (jira, project) => {
-  const {values: boards = []} = await jira(
-    "GET",
+export const openSprints = async (jira, project) => {
+  const boards = await allPages(
+    jira,
     `${AGILE}/board?projectKeyOrId=${encodeURIComponent(project)}`,
   );
   const sprints = new Map();
   for (const board of boards.filter((b) => b.type === "scrum")) {
-    const {values = []} = await jira(
-      "GET",
+    const values = await allPages(
+      jira,
       `${AGILE}/board/${board.id}/sprint?state=active,future`,
     );
     for (const s of values) sprints.set(s.id, s);
@@ -33,11 +48,11 @@ export const registerMoveToSprint = (server, jiraRequest) => {
       inputSchema: z.object({
         sprint: z
           .string()
-          .describe('Sprint name (e.g. "GEM Sprint 12") or numeric sprint ID'),
+          .describe('Sprint name (e.g. "PROJ Sprint 12") or numeric sprint ID'),
         ticket_ids: z
           .array(z.string())
           .min(1)
-          .describe('Issue keys to move, e.g. ["GEM-1", "GEM-2"]'),
+          .describe('Issue keys to move, e.g. ["PROJ-1", "PROJ-2"]'),
       }),
     },
     async ({ticket_ids, sprint}, jira) => {

@@ -8,7 +8,7 @@ export const registerRemoveWatcher = (server, jiraRequest) => {
     {
       description: "Remove a user from the watchers of a Jira ticket",
       inputSchema: z.object({
-        ticket_id: z.string().describe("Jira issue key, e.g. GEM-234"),
+        ticket_id: z.string().describe("Jira issue key, e.g. PROJ-234"),
         username: z.string().min(1).describe("Jira username to remove"),
       }),
     },

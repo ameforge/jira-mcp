@@ -33,7 +33,7 @@ export const registerCreateTicket = (server, jiraRequest) => {
           .describe(
             "Parent ticket key for any sub-task type (Sub-task or a custom one)",
           ),
-        project: z.string().describe("Project key, e.g. GEM"),
+        project: z.string().describe("Project key, e.g. PROJ"),
         start_date: z.string().optional().describe("Start date YYYY-MM-DD"),
         summary: z.string().describe("Issue title"),
       }),

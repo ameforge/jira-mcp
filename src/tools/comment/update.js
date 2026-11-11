@@ -12,7 +12,7 @@ export const registerUpdateComment = (server, jiraRequest) => {
       inputSchema: z.object({
         body: z.string().describe("New comment text (plain text)"),
         comment_id: z.string().describe("Comment ID, e.g. 10001"),
-        ticket_id: z.string().describe("Jira issue key, e.g. GEM-234"),
+        ticket_id: z.string().describe("Jira issue key, e.g. PROJ-234"),
       }),
     },
     async ({ticket_id, comment_id, body}, jira) => {

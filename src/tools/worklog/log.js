@@ -1,5 +1,6 @@
 import {z} from "zod";
 import {defineTool} from "../../define-tool.js";
+import {formSession} from "../../web-form.js";
 import {
   ACTIVITIES,
   canonicalNames,
@@ -7,7 +8,7 @@ import {
   WORK_TYPES,
 } from "./worklog-pro.js";
 
-export const registerLogWork = (server, jiraRequest) => {
+export const registerLogWork = (server, jiraRequest, forms = formSession) => {
   defineTool(
     server,
     "log_work",
@@ -31,7 +32,7 @@ export const registerLogWork = (server, jiraRequest) => {
           .string()
           .optional()
           .describe("Start datetime ISO, e.g. '2026-06-29T09:00:00.000+0700'"),
-        ticket_id: z.string().describe("Jira issue key, e.g. GEM-234"),
+        ticket_id: z.string().describe("Jira issue key, e.g. PROJ-234"),
         time_spent: z
           .string()
           .describe("Time spent, e.g. '2h 30m', '1d', '45m'"),
@@ -45,7 +46,7 @@ export const registerLogWork = (server, jiraRequest) => {
       {ticket_id, time_spent, comment, started, work_type, activity},
       jira,
     ) => {
-      const {id} = await logWorkPro(jira, ticket_id, time_spent, {
+      const {id} = await logWorkPro(jira, forms, ticket_id, time_spent, {
         activity,
         comment,
         started,

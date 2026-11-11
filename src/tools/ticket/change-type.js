@@ -1,6 +1,3 @@
-import {JIRA_HOST} from "../../jira-client.js";
-import {formErrors, formSession} from "../../web-form.js";
-
 const MAX_STEPS = 8;
 // &amp; last, so "&amp;lt;" stays the literal text "&lt;".
 const decode = (s) =>
@@ -63,25 +60,19 @@ const parseForm = (html) => {
 // Drives one of Jira's classic convert/move wizards to the end. `answers` sets
 // fields by name wherever a step has them; everything else keeps the value the
 // page pre-filled, as the UI would submit it.
-const runWizard = async (startPath, answers, currentStatus, ticketId) => {
-  const send = formSession();
-  // Follows redirects by hand so every hop keeps the session cookies; a hop to
-  // the issue page is how Jira reports a finished wizard.
-  const load = async (url, body) => {
-    let res = await send(url, body);
-    while (res.status === 302) {
-      url = new URL(res.headers.get("location"), url).href;
-      if (url.includes("/browse/")) return {done: true};
-      res = await send(url);
-    }
-    return {html: await res.text(), status: res.status, url};
-  };
-
-  let page = await load(`${JIRA_HOST}/secure/${startPath}`);
+const runWizard = async (
+  forms,
+  startPath,
+  answers,
+  currentStatus,
+  ticketId,
+) => {
+  const session = forms();
+  let page = await session.open(`/secure/${startPath}`);
   for (let step = 0; step < MAX_STEPS && !page.done; step++) {
     const form = parseForm(page.html);
     if (!form) {
-      const why = formErrors(page.html);
+      const why = page.errors;
       throw new Error(
         `Jira did not open the issue type wizard for ${ticketId} (HTTP ${page.status})` +
           (why ? `: ${why}` : "") +
@@ -113,15 +104,15 @@ const runWizard = async (startPath, answers, currentStatus, ticketId) => {
     }
     const body = new URLSearchParams([...form.fields]);
     if (submitName) body.set(submitName, submitValue);
-    const next = await load(
+    const next = await session.submit(
       new URL(form.action, page.url).href,
-      body.toString(),
+      body,
     );
     // A step that renders itself again with errors (e.g. a required field the
     // new type needs) did not advance.
     if (!next.done && parseForm(next.html)?.action === form.action) {
       throw new Error(
-        `Jira stopped the issue type change of ${ticketId}: ${formErrors(next.html) || "the step did not advance"}. Nothing was changed.`,
+        `Jira stopped the issue type change of ${ticketId}: ${next.errors || "the step did not advance"}. Nothing was changed.`,
       );
     }
     page = next;
@@ -178,6 +169,9 @@ export const planTypeChange = async (jira, ticketId, typeName, parentKey) => {
   return {answers, start, status: status.name, ticketId};
 };
 
-/** @param {NonNullable<Awaited<ReturnType<typeof planTypeChange>>>} plan */
-export const runTypeWizard = ({answers, start, status, ticketId}) =>
-  runWizard(start, answers, status, ticketId);
+/**
+ * @param {typeof import("../../web-form.js").formSession} forms
+ * @param {NonNullable<Awaited<ReturnType<typeof planTypeChange>>>} plan
+ */
+export const runTypeWizard = (forms, {answers, start, status, ticketId}) =>
+  runWizard(forms, start, answers, status, ticketId);

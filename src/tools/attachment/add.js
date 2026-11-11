@@ -17,7 +17,7 @@ export const registerAddAttachment = (server, upload = jiraUpload) => {
           .describe(
             "Absolute path of the file to upload; a relative path resolves against the server process's working directory, which the MCP client chooses",
           ),
-        ticket_id: z.string().describe("Jira issue key, e.g. GEM-234"),
+        ticket_id: z.string().describe("Jira issue key, e.g. PROJ-234"),
       }),
     },
     async ({ticket_id, file_path}) => {

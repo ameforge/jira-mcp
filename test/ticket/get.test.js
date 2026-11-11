@@ -12,7 +12,7 @@ test("get_ticket formats issue fields without hitting live Jira", async () => {
   const fakeJira = async (method, path) => {
     assert.equal(method, "GET");
     // Only the fields the tool prints; comments stay out unless asked for.
-    assert.equal(path, `/issue/GEM-1?fields=${FIELDS}`);
+    assert.equal(path, `/issue/PROJ-1?fields=${FIELDS}`);
     return {
       fields: {
         assignee: {displayName: "Alice"},
@@ -27,14 +27,14 @@ test("get_ticket formats issue fields without hitting live Jira", async () => {
         summary: "Do the thing",
         timetracking: {originalEstimate: "2h"},
       },
-      key: "GEM-1",
+      key: "PROJ-1",
     };
   };
   registerGetTicket(server, fakeJira);
 
-  const result = await server.tools.get("get_ticket")({ticket_id: "GEM-1"});
+  const result = await server.tools.get("get_ticket")({ticket_id: "PROJ-1"});
   const text = result.content[0].text;
-  assert.match(text, /Key: GEM-1/);
+  assert.match(text, /Key: PROJ-1/);
   assert.match(text, /Assignee: Alice/);
   assert.match(text, /Start Date: 2026-01-01/);
   // Unset fields and comments cost the caller tokens, so they stay out.
@@ -46,15 +46,15 @@ test("get_ticket omits unset fields but keeps the ones that are set", async () =
   const server = fakeServer();
   const fakeJira = async () => ({
     fields: {status: {name: "Open"}, summary: "Bare ticket"},
-    key: "GEM-2",
+    key: "PROJ-2",
   });
   registerGetTicket(server, fakeJira);
 
-  const text = (await server.tools.get("get_ticket")({ticket_id: "GEM-2"}))
+  const text = (await server.tools.get("get_ticket")({ticket_id: "PROJ-2"}))
     .content[0].text;
   assert.equal(
     text,
-    "Key: GEM-2\nSummary: Bare ticket\nStatus: Open\nAssignee: Unassigned",
+    "Key: PROJ-2\nSummary: Bare ticket\nStatus: Open\nAssignee: Unassigned",
   );
 });
 
@@ -81,18 +81,18 @@ test("get_ticket returns comments on request and flags truncation", async () => 
       status: {name: "Open"},
       summary: "Has comments",
     },
-    key: "GEM-3",
+    key: "PROJ-3",
   };
   registerGetTicket(server, fakeJira);
   const call = server.tools.get("get_ticket");
 
   assert.doesNotMatch(
-    (await call({ticket_id: "GEM-3"})).content[0].text,
+    (await call({ticket_id: "PROJ-3"})).content[0].text,
     /the answer is 42/,
   );
-  const text = (await call({include_comments: true, ticket_id: "GEM-3"}))
+  const text = (await call({include_comments: true, ticket_id: "PROJ-3"}))
     .content[0].text;
-  assert.equal(paths[1], `/issue/GEM-3?fields=${FIELDS},comment`);
+  assert.equal(paths[1], `/issue/PROJ-3?fields=${FIELDS},comment`);
   assert.match(text, /Comments \(1 most recent of 3\):/);
   // The ID is what update_comment and delete_comment take.
   assert.match(text, /#10001 \[2026-07-01\] Alice: the answer is 42/);
@@ -107,13 +107,13 @@ test("get_ticket caps a long comment thread and says it capped it", async () => 
   }));
   registerGetTicket(server, async () => ({
     fields: {comment: {comments, total: 45}, status: {}, summary: "Busy"},
-    key: "GEM-4",
+    key: "PROJ-4",
   }));
 
   const text = (
     await server.tools.get("get_ticket")({
       include_comments: true,
-      ticket_id: "GEM-4",
+      ticket_id: "PROJ-4",
     })
   ).content[0].text;
 
@@ -153,13 +153,13 @@ test("get_ticket returns image attachments as image blocks on request", async ()
     server,
     async () => ({
       fields: {attachment, status: {}, summary: "Has shots"},
-      key: "GEM-5",
+      key: "PROJ-5",
     }),
     download,
   );
   const call = server.tools.get("get_ticket");
 
-  const plain = await call({ticket_id: "GEM-5"});
+  const plain = await call({ticket_id: "PROJ-5"});
   assert.equal(plain.content.length, 1);
   assert.match(
     plain.content[0].text,
@@ -167,7 +167,7 @@ test("get_ticket returns image attachments as image blocks on request", async ()
   );
   assert.equal(downloads.length, 0);
 
-  const {content} = await call({include_images: true, ticket_id: "GEM-5"});
+  const {content} = await call({include_images: true, ticket_id: "PROJ-5"});
   assert.deepEqual(downloads, ["u1", "u4"]);
   assert.deepEqual(content.slice(1), [
     {data: "BASE64", mimeType: "image/png", type: "image"},
@@ -196,7 +196,7 @@ test("get_ticket keeps returned images within a base64 byte budget", async () =>
     server,
     async () => ({
       fields: {attachment, status: {}, summary: "Big"},
-      key: "GEM-6",
+      key: "PROJ-6",
     }),
     async (url) => {
       downloads.push(url);
@@ -206,7 +206,7 @@ test("get_ticket keeps returned images within a base64 byte budget", async () =>
 
   const {content} = await server.tools.get("get_ticket")({
     include_images: true,
-    ticket_id: "GEM-6",
+    ticket_id: "PROJ-6",
   });
   assert.deepEqual(downloads, ["a", "b"]);
   assert.equal(content.length, 3);
@@ -225,13 +225,13 @@ test("get_ticket returns up to image_limit images, default 5", async () => {
     server,
     async () => ({
       fields: {attachment, status: {}, summary: "Many"},
-      key: "GEM-7",
+      key: "PROJ-7",
     }),
     async () => "B64",
   );
   const call = server.tools.get("get_ticket");
 
-  const byDefault = await call({include_images: true, ticket_id: "GEM-7"});
+  const byDefault = await call({include_images: true, ticket_id: "PROJ-7"});
   assert.equal(byDefault.content.length, 6);
   assert.match(
     byDefault.content[0].text,
@@ -241,7 +241,7 @@ test("get_ticket returns up to image_limit images, default 5", async () => {
   const raised = await call({
     image_limit: 7,
     include_images: true,
-    ticket_id: "GEM-7",
+    ticket_id: "PROJ-7",
   });
   assert.equal(raised.content.length, 8);
   assert.doesNotMatch(raised.content[0].text, /not shown/);
@@ -252,7 +252,7 @@ test("get_ticket lists worklogs with their IDs from the worklog endpoint", async
   const paths = [];
   const fakeJira = async (_method, path) => {
     paths.push(path);
-    if (path === "/issue/GEM-4/worklog") {
+    if (path === "/issue/PROJ-4/worklog") {
       return {
         total: 3,
         worklogs: [
@@ -266,19 +266,19 @@ test("get_ticket lists worklogs with their IDs from the worklog endpoint", async
         ],
       };
     }
-    return {fields: {status: {name: "Open"}, summary: "Logged"}, key: "GEM-4"};
+    return {fields: {status: {name: "Open"}, summary: "Logged"}, key: "PROJ-4"};
   };
   registerGetTicket(server, fakeJira);
 
   const text = (
     await server.tools.get("get_ticket")({
       include_worklogs: true,
-      ticket_id: "GEM-4",
+      ticket_id: "PROJ-4",
     })
   ).content[0].text;
   assert.deepEqual(paths, [
-    `/issue/GEM-4?fields=${FIELDS}`,
-    "/issue/GEM-4/worklog",
+    `/issue/PROJ-4?fields=${FIELDS}`,
+    "/issue/PROJ-4/worklog",
   ]);
   assert.match(text, /Worklogs \(1 most recent of 3\):/);
   // The ID is what update_worklog and delete_worklog take.

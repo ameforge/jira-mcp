@@ -15,7 +15,7 @@ export const registerGenerateReleaseNotes = (server, jiraRequest) => {
         project: z
           .string()
           .optional()
-          .describe('Limit to project key, e.g. "GEM"'),
+          .describe('Limit to project key, e.g. "PROJ"'),
       }),
     },
     async ({fix_version, project}, jira) => {

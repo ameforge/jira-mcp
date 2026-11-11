@@ -11,19 +11,19 @@ const ISSUE_TYPE_JQL = `Jira API 400: {"errorMessages":["The value 'QA-Subtask' 
 const ISSUE_TYPE_FIELD = `Jira API 400: {"errorMessages":[],"errors":{"issuetype":"Could not find issuetype by id or name."}}`;
 const LINK_TYPE = `Jira API 404: {"errorMessages":["No issue link type with name 'Relates to' found."],"errors":{}}`;
 
-const UPDATE_PLAN = "/issue/GEM-12?fields=issuetype,status,project";
+const UPDATE_PLAN = "/issue/PROJ-12?fields=issuetype,status,project";
 const LOOKUPS = {
   [UPDATE_PLAN]: {
     fields: {
       issuetype: {id: "1", name: "Task", subtask: false},
-      project: {key: "GEM"},
+      project: {key: "PROJ"},
       status: {name: "Open"},
     },
     id: "12",
   },
   "/issueLinkType": {issueLinkTypes: [{name: "Blocks"}, {name: "Relates"}]},
   "/issuetype": [{name: "Task"}, {name: "QA Sub-Task"}, {name: "Task"}],
-  "/project/GEM": {issueTypes: [{name: "Story"}, {name: "QA Sub-Task"}]},
+  "/project/PROJ": {issueTypes: [{name: "Story"}, {name: "QA Sub-Task"}]},
 };
 
 // Fails the tool's own request with jiraError, answers the name lookups.
@@ -53,24 +53,24 @@ for (const [register, name, args, jiraError, lookup, valid] of [
   [
     registerCreateTicket,
     "create_ticket",
-    {issue_type: "QA-Subtask", project: "GEM", summary: "x"},
+    {issue_type: "QA-Subtask", project: "PROJ", summary: "x"},
     ISSUE_TYPE_FIELD,
-    "/project/GEM",
+    "/project/PROJ",
     "Valid issue types: Story, QA Sub-Task",
   ],
   [
     registerUpdateTicket,
     "update_ticket",
-    {issue_type: "QA-Subtask", ticket_id: "GEM-12"},
+    {issue_type: "QA-Subtask", ticket_id: "PROJ-12"},
     ISSUE_TYPE_FIELD,
     // Planning the type change reads the ticket and its project first.
-    [UPDATE_PLAN, "/project/GEM", "/project/GEM"],
+    [UPDATE_PLAN, "/project/PROJ", "/project/PROJ"],
     "Valid issue types: Story, QA Sub-Task",
   ],
   [
     registerLinkIssues,
     "link_issues",
-    {inward_issue: "GEM-1", link_type: "Relates to", outward_issue: "GEM-2"},
+    {inward_issue: "PROJ-1", link_type: "Relates to", outward_issue: "PROJ-2"},
     LINK_TYPE,
     "/issueLinkType",
     "Valid link types: Blocks, Relates",
@@ -105,7 +105,7 @@ test("update_ticket clears a date given as an empty string", async () => {
   await server.tools.get("update_ticket")({
     due_date: "",
     start_date: "",
-    ticket_id: "GEM-1",
+    ticket_id: "PROJ-1",
   });
   assert.deepEqual(bodies, [
     {fields: {customfield_11300: null, duedate: null}},

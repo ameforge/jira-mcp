@@ -20,5 +20,19 @@
   "npm": {
     "allowSameVersion": false,
     "publish": false
+  },
+  "only-version": true,
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "commitsOpts": {
+        "path": "."
+      },
+      "gitRawCommitsOpts": {
+        "path": "."
+      },
+      "preset": {
+        "name": "conventionalcommits"
+      }
+    }
   }
 }
