@@ -65,8 +65,8 @@ Official setup guides:
 | Variable                | Required | Description                                                     |
 | ----------------------- | -------- | --------------------------------------------------------------- |
 | `JIRA_HOST`             | yes      | Base URL, e.g. `https://jira.company.com`                       |
-| `JIRA_USERNAME`         | yes*     | Jira username                                                   |
-| `JIRA_PASSWORD`         | yes*     | Jira password                                                   |
+| `JIRA_USERNAME`         | yes*     | Jira username; `ATLASSIAN_USERNAME` is read when it is unset    |
+| `JIRA_PASSWORD`         | yes*     | Jira password; `ATLASSIAN_PASSWORD` is read when it is unset    |
 | `JIRA_TOKEN`            | no       | Personal Access Token; when set, replaces username/password (*) |
 | `JIRA_START_DATE_FIELD` | no       | Custom field ID for "Start date" (default `customfield_11300`)  |
 | `JIRA_EPIC_LINK_FIELD`  | no       | Custom field ID for "Epic Link" (default `customfield_10001`)   |
@@ -152,9 +152,10 @@ curl -u user:pass https://jira.company.com/rest/api/2/field | jq '.[] | select(.
 pnpm install
 cp .env.example .env   # edit with your credentials
 pnpm build             # bundle to dist/index.js via rsbuild
-pnpm lint              # biome check + tsc
-pnpm release           # release-it: runs lint, test and build, then bumps version, commits, tags, pushes (commit your changes first; pnpm publish is a separate step)
+pnpm test
 ```
+
+Release from the repo root with `pnpm release:jira`; see [docs/RELEASE.md](https://github.com/ameforge/atlassian-mcp/blob/main/docs/RELEASE.md).
 
 ## Support
 

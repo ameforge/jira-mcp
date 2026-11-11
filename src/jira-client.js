@@ -12,8 +12,9 @@ export const JIRA_HOST = (process.env.JIRA_HOST ?? "")
   .replace(/^["']|["']$/g, "")
   .replace(/\/+$/, "");
 const BASE = `${JIRA_HOST}/rest/api/2`;
+// ATLASSIAN_*: one account shared with Confluence, set once for atlassian-mcp.
 const AUTH = Buffer.from(
-  `${process.env.JIRA_USERNAME}:${process.env.JIRA_PASSWORD}`,
+  `${process.env.JIRA_USERNAME || process.env.ATLASSIAN_USERNAME}:${process.env.JIRA_PASSWORD || process.env.ATLASSIAN_PASSWORD}`,
 ).toString("base64");
 // A Personal Access Token lets SSO-only accounts (no Jira password) authenticate.
 export const AUTH_HEADER = process.env.JIRA_TOKEN
