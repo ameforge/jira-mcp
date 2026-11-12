@@ -66,6 +66,7 @@ const runWizard = async (
   answers,
   currentStatus,
   ticketId,
+  allowFieldLoss,
 ) => {
   const session = forms();
   let page = await session.open(`/secure/${startPath}`);
@@ -94,12 +95,12 @@ const runWizard = async (
     const [submitName, submitValue] = form.submit;
     const finishing = /^(finish|move)$/i.test(submitValue);
     // The confirm page lists field values the new type cannot hold; Jira
-    // deletes them on Finish, so never submit past that.
-    if (finishing && /Removed fields/i.test(form.text)) {
+    // deletes them on Finish, so submit past that only on an explicit opt-in.
+    if (finishing && !allowFieldLoss && /Removed fields/i.test(form.text)) {
       const removed = form.text.match(/Removed fields(.*?)(Cancel|$)/i)?.[1];
       throw new Error(
         `Changing the issue type of ${ticketId} would delete field values (${removed?.trim()}). ` +
-          "Nothing was changed; do it in the Jira UI if losing them is intended.",
+          "Nothing was changed; pass allow_field_loss: true if losing them is intended.",
       );
     }
     const body = new URLSearchParams([...form.fields]);
@@ -172,6 +173,10 @@ export const planTypeChange = async (jira, ticketId, typeName, parentKey) => {
 /**
  * @param {typeof import("../../web-form.js").formSession} forms
  * @param {NonNullable<Awaited<ReturnType<typeof planTypeChange>>>} plan
+ * @param {boolean} [allowFieldLoss] let Jira delete field values the new type cannot hold
  */
-export const runTypeWizard = (forms, {answers, start, status, ticketId}) =>
-  runWizard(forms, start, answers, status, ticketId);
+export const runTypeWizard = (
+  forms,
+  {answers, start, status, ticketId},
+  allowFieldLoss,
+) => runWizard(forms, start, answers, status, ticketId, allowFieldLoss);

@@ -37,8 +37,15 @@ export const registerUpdateTicket = (
         "Update fields of a Jira ticket. Changing issue_type to or from a " +
         "sub-task type, or parent_key of an existing sub-task, goes through " +
         "Jira's Move/Convert wizards; converting to a sub-task needs parent_key. " +
-        "It stops instead of deleting field values the new type cannot hold.",
+        "It stops instead of deleting field values the new type cannot hold, " +
+        "unless allow_field_loss is true.",
       inputSchema: z.object({
+        allow_field_loss: z
+          .boolean()
+          .optional()
+          .describe(
+            "With issue_type: let the type change delete field values the new type cannot hold. Without it, the change stops instead.",
+          ),
         assignee: z
           .string()
           .optional()
@@ -91,6 +98,7 @@ export const registerUpdateTicket = (
     async (
       {
         ticket_id,
+        allow_field_loss,
         summary,
         description,
         implementation_notes,
@@ -165,7 +173,7 @@ export const registerUpdateTicket = (
       // What the wizards already changed, for an error after them.
       const changed = [];
       if (typePlan) {
-        await runTypeWizard(forms, typePlan);
+        await runTypeWizard(forms, typePlan, allow_field_loss);
         changed.push(`issue type to "${issue_type}"`);
       }
       if (parent_key !== undefined) {

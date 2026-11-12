@@ -137,6 +137,16 @@ test("update_ticket never finishes a type change that would delete field values"
   assert.ok(!wizard.sent.some((s) => s.url.includes("ConvertSubTaskConvert")));
 });
 
+test("update_ticket finishes a type change that deletes field values only with allow_field_loss", async () => {
+  const wizard = convertWizard(
+    "Type Sub-task Task Removed fields Severity Normal Removed",
+  );
+  const result = await convertToTask(wizard, [], {allow_field_loss: true});
+
+  assert.equal(result.content[0].text, "PROJ-1 updated successfully");
+  assert.ok(wizard.sent.some((s) => s.url.includes("ConvertSubTaskConvert")));
+});
+
 test("update_ticket stops when the new workflow lacks the ticket's status", async () => {
   // Field name and options as Jira renders the step for a status the new
   // workflow does not have; no option is pre-selected.
