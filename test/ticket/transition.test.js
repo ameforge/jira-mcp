@@ -70,3 +70,27 @@ test("transition_ticket lists transition and target names when nothing matches",
   assert.match(result.content[0].text, /Start Progress -> In Progress/);
   assert.match(result.content[0].text, /Re-Open,/);
 });
+
+test("transition_tickets continues past a failing ticket and reports it as an error", async () => {
+  const server = fakeServer();
+  const posted = [];
+  registerTransitionTicket(server, async (method, path) => {
+    if (method === "GET") {
+      if (path.includes("PROJ-2")) throw new Error("not found");
+      return {transitions: TRANSITIONS};
+    }
+    posted.push(path);
+    return null;
+  });
+  const result = await server.tools.get("transition_tickets")({
+    status: "Done",
+    ticket_ids: ["proj-1", "PROJ-2", "PROJ-3"],
+  });
+  assert.deepEqual(posted, [
+    "/issue/PROJ-1/transitions",
+    "/issue/PROJ-3/transitions",
+  ]);
+  assert.equal(result.isError, true);
+  assert.match(result.content[0].text, /1 of 3 failed/);
+  assert.match(result.content[0].text, /PROJ-2 failed: not found/);
+});

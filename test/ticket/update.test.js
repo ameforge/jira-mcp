@@ -183,3 +183,43 @@ test("update_ticket reports Jira's silent rejection of an Epic Link change", asy
   assert.match(result.content[0].text, /still "no epic"/);
   assert.match(result.content[0].text, /Sub-tasks or Epics themselves/);
 });
+
+test("update_tickets applies the same fields to each ticket and reports a failure", async () => {
+  const server = fakeServer();
+  const puts = [];
+  registerUpdateTicket(server, async (method, path, body) => {
+    if (method === "PUT") {
+      if (path === "/issue/PROJ-2") throw new Error("denied");
+      puts.push([path, body.fields.priority]);
+    }
+    return null;
+  });
+
+  const result = await server.tools.get("update_tickets")({
+    priority: "High",
+    ticket_ids: ["proj-1", "PROJ-2", "PROJ-3"],
+  });
+
+  assert.deepEqual(puts, [
+    ["/issue/PROJ-1", {name: "High"}],
+    ["/issue/PROJ-3", {name: "High"}],
+  ]);
+  assert.equal(result.isError, true);
+  assert.match(result.content[0].text, /1 of 3 failed/);
+  assert.match(result.content[0].text, /PROJ-2 failed/);
+});
+
+test("update_tickets refuses a type change instead of opening a wizard per ticket", async () => {
+  const server = fakeServer();
+  registerUpdateTicket(server, async () => {
+    throw new Error("jiraRequest should not be called");
+  });
+
+  const result = await server.tools.get("update_tickets")({
+    issue_type: "Bug",
+    ticket_ids: ["PROJ-1"],
+  });
+
+  assert.equal(result.isError, true);
+  assert.match(result.content[0].text, /issue_type not supported/);
+});

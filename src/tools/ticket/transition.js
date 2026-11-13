@@ -1,4 +1,5 @@
 import {z} from "zod";
+import {runBatch} from "../../batch.js";
 import {defineTool} from "../../define-tool.js";
 
 // Names agents reach for that real workflows spell differently. Each maps to an
@@ -29,6 +30,32 @@ const namesOf = (t) =>
 const label = (t) =>
   t.to?.name && t.to.name !== t.name ? `${t.name} -> ${t.to.name}` : t.name;
 
+const transitionOne = async (jira, ticket_id, status) => {
+  const {transitions} = await jira("GET", `/issue/${ticket_id}/transitions`);
+  const wanted = status.trim().toLowerCase();
+  // "" is a substring of every name, so it would pick the first transition.
+  if (!wanted) throw new Error("status is empty");
+  const pick = (want) =>
+    transitions.find((t) => namesOf(t).some((n) => n === want));
+  const match =
+    pick(wanted) ||
+    (ALIASES[wanted] ?? []).reduce((found, a) => found || pick(a), null) ||
+    // Substring last: it is the loosest and would shadow better alias hits.
+    transitions.find((t) => namesOf(t).some((n) => n.includes(wanted)));
+  if (!match) {
+    const available = transitions.map(label).join(", ");
+    throw new Error(`Status "${status}" not found. Available: ${available}`);
+  }
+  await jira("POST", `/issue/${ticket_id}/transitions`, {
+    transition: {id: match.id},
+  });
+  return `${ticket_id} transitioned to "${match.to?.name || match.name}"`;
+};
+
+const statusParam = z
+  .string()
+  .describe('Target status name, e.g. "In Progress", "Done"');
+
 export const registerTransitionTicket = (server, jiraRequest) => {
   defineTool(
     server,
@@ -37,38 +64,30 @@ export const registerTransitionTicket = (server, jiraRequest) => {
       description:
         "Change a Jira ticket's status. Matches the transition name or its target status; common aliases (Closed/Resolved -> Done, Reopen -> Re-Open) resolve to whatever the workflow offers. Valid options vary per issue and are listed in the error when no match is found.",
       inputSchema: z.object({
-        status: z
-          .string()
-          .describe('Target status name, e.g. "In Progress", "Done"'),
+        status: statusParam,
         ticket_id: z.string().describe("Jira issue key, e.g. PROJ-234"),
       }),
     },
-    async ({ticket_id, status}, jira) => {
-      const {transitions} = await jira(
-        "GET",
-        `/issue/${ticket_id}/transitions`,
-      );
-      const wanted = status.trim().toLowerCase();
-      // "" is a substring of every name, so it would pick the first transition.
-      if (!wanted) throw new Error("status is empty");
-      const pick = (want) =>
-        transitions.find((t) => namesOf(t).some((n) => n === want));
-      const match =
-        pick(wanted) ||
-        (ALIASES[wanted] ?? []).reduce((found, a) => found || pick(a), null) ||
-        // Substring last: it is the loosest and would shadow better alias hits.
-        transitions.find((t) => namesOf(t).some((n) => n.includes(wanted)));
-      if (!match) {
-        const available = transitions.map(label).join(", ");
-        throw new Error(
-          `Status "${status}" not found. Available: ${available}`,
-        );
-      }
-      await jira("POST", `/issue/${ticket_id}/transitions`, {
-        transition: {id: match.id},
-      });
-      return `${ticket_id} transitioned to "${match.to?.name || match.name}"`;
+    ({ticket_id, status}, jira) => transitionOne(jira, ticket_id, status),
+    jiraRequest,
+  );
+
+  defineTool(
+    server,
+    "transition_tickets",
+    {
+      description:
+        "Change the status of several Jira tickets to the same status, with the same matching as transition_ticket. Tickets are processed in order; a failure on one does not stop the rest, and the result lists each ticket's outcome.",
+      inputSchema: z.object({
+        status: statusParam,
+        ticket_ids: z
+          .array(z.string())
+          .min(1)
+          .describe('Issue keys, e.g. ["PROJ-1", "PROJ-2"]'),
+      }),
     },
+    ({ticket_ids, status}, jira) =>
+      runBatch(ticket_ids, (key) => transitionOne(jira, key, status)),
     jiraRequest,
   );
 };
