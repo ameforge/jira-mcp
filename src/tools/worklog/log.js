@@ -14,7 +14,7 @@ export const registerLogWork = (server, jiraRequest, forms = formSession) => {
     "log_work",
     {
       description:
-        "Log work (time) on a Jira ticket, optionally setting WorklogPRO Type of Work and Type of Activity",
+        "Log work (time) on a Jira ticket, optionally setting WorklogPRO Type of Work and Type of Activity. Check list_worklogs for that day first to avoid a duplicate.",
       inputSchema: z.object({
         activity: z
           .string()

@@ -19,6 +19,7 @@ import {registerFindUser} from "./tools/user/find.js";
 import {registerAddWatcher} from "./tools/watcher/add.js";
 import {registerRemoveWatcher} from "./tools/watcher/remove.js";
 import {registerDeleteWorklog} from "./tools/worklog/delete.js";
+import {registerListWorklogs} from "./tools/worklog/list.js";
 import {registerLogWork} from "./tools/worklog/log.js";
 import {registerUpdateWorklog} from "./tools/worklog/update.js";
 
@@ -37,6 +38,7 @@ export const registerTools = (server) => {
   registerLinkIssues(server);
   registerUnlinkIssues(server);
   registerLogWork(server);
+  registerListWorklogs(server);
   registerUpdateWorklog(server);
   registerDeleteWorklog(server);
   registerAddWatcher(server);

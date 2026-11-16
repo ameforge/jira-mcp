@@ -64,7 +64,7 @@ const WORKLOG_TZ = process.env.JIRA_TIMEZONE || "Asia/Ho_Chi_Minh";
 // Convert an ISO instant into the two formats the WorklogPRO form expects:
 // startDateJS in Jira display format (authoritative) and startDate as a hidden
 // "YYYY-MM-DD HH:mm" mirror, both rendered in the Jira server timezone.
-const worklogDates = (iso) => {
+export const worklogDates = (iso) => {
   const date = new Date(iso);
   const display = Object.fromEntries(
     new Intl.DateTimeFormat("en-US", {
