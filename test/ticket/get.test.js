@@ -266,6 +266,14 @@ test("get_ticket lists worklogs with their IDs from the worklog endpoint", async
         ],
       };
     }
+    if (path === "/rest/com.deniz.jira.worklog/1.0/worklog/20001") {
+      return {
+        workLogAttributes: [
+          {attrTypeId: 2, attrValue: "9"},
+          {attrTypeId: 1, attrValue: "3"},
+        ],
+      };
+    }
     return {fields: {status: {name: "Open"}, summary: "Logged"}, key: "PROJ-4"};
   };
   registerGetTicket(server, fakeJira);
@@ -279,8 +287,13 @@ test("get_ticket lists worklogs with their IDs from the worklog endpoint", async
   assert.deepEqual(paths, [
     `/issue/PROJ-4?fields=${FIELDS}`,
     "/issue/PROJ-4/worklog",
+    "/rest/com.deniz.jira.worklog/1.0/worklog/20001",
   ]);
   assert.match(text, /Worklogs \(1 most recent of 3\):/);
-  // The ID is what update_worklog and delete_worklog take.
-  assert.match(text, /#20001 \[2026-07-02\] Alice 2h: pairing/);
+  // The ID is what update_worklog and delete_worklog take; the types are the
+  // aliases log_work takes.
+  assert.match(
+    text,
+    /#20001 \[2026-07-02\] Alice 2h \[code\/review\]: pairing/,
+  );
 });

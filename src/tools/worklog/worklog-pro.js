@@ -45,6 +45,35 @@ export const canonicalNames = (map) => {
   return [...byId.values()].join(", ");
 };
 
+// The alias canonicalNames advertises for an id, so a listed type can be fed
+// straight back to log_work; an id missing from the table prints as is.
+const nameOf = (map, id) =>
+  Object.keys(map).find((k) => map[k] === Number(id)) ?? `type ${id}`;
+
+/**
+ * A worklog's WorklogPRO types as "[work/activity]"; "[no type]" when either is
+ * unset and "[type unknown]" when they cannot be read (e.g. no WorklogPRO).
+ * REST worklogs omit them; WorklogPRO's API lists them as attrTypeId 1 (Type
+ * of Work) and 2 (Type of Activity), in no fixed order.
+ */
+export const worklogTypes = async (jira, worklogId) => {
+  try {
+    const {workLogAttributes = []} =
+      (await jira(
+        "GET",
+        `/rest/com.deniz.jira.worklog/1.0/worklog/${worklogId}`,
+      )) ?? {};
+    const attr = (typeId) =>
+      workLogAttributes.find((a) => a.attrTypeId === typeId)?.attrValue;
+    const work = attr(1);
+    const activity = attr(2);
+    if (!work || !activity) return "[no type]";
+    return `[${nameOf(WORK_TYPES, work)}/${nameOf(ACTIVITIES, activity)}]`;
+  } catch {
+    return "[type unknown]";
+  }
+};
+
 // Resolved here, before any request, so an unknown alias fails with nothing
 // posted and the tool never has to know the id tables.
 const resolveAlias = (map, name, label) => {

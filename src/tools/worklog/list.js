@@ -1,6 +1,6 @@
 import {z} from "zod";
 import {defineTool} from "../../define-tool.js";
-import {worklogDates} from "./worklog-pro.js";
+import {worklogDates, worklogTypes} from "./worklog-pro.js";
 
 // Local "YYYY-MM-DD HH:mm" in the WorklogPRO timezone, the same clock log_work
 // writes with, so a day here matches the day the worklog was logged for.
@@ -19,7 +19,7 @@ export const registerListWorklogs = (server, jiraRequest) => {
     "list_worklogs",
     {
       description:
-        "List one user's worklogs on one day across all tickets (default: yours), with worklog IDs and the day's total. Call it before log_work to avoid logging the same work twice. REST cannot read WorklogPRO Type of Work/Activity, so they are not shown.",
+        "List one user's worklogs on one day across all tickets (default: yours), with worklog IDs, WorklogPRO types as [work/activity] ([no type] when unset) and the day's total. Call it before log_work to avoid logging the same work twice.",
       inputSchema: z.object({
         date: z
           .string()
@@ -75,11 +75,14 @@ export const registerListWorklogs = (server, jiraRequest) => {
       if (!mine.length) return `No worklogs${of} on ${day}`;
 
       const total = mine.reduce((s, w) => s + (w.timeSpentSeconds || 0), 0);
+      const types = await Promise.all(
+        mine.map((w) => worklogTypes(jira, w.id)),
+      );
       return [
         `Worklogs${of} on ${day}: ${mine.length}, total ${hours(total)}`,
         ...mine.map(
-          (w) =>
-            `  ${w.key} #${w.id} ${localStart(w.started).slice(11)} ${w.timeSpent}${w.comment ? `: ${w.comment}` : ""}`,
+          (w, i) =>
+            `  ${w.key} #${w.id} ${localStart(w.started).slice(11)} ${w.timeSpent} ${types[i]}${w.comment ? `: ${w.comment}` : ""}`,
         ),
       ].join("\n");
     },

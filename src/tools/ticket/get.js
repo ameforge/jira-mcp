@@ -2,6 +2,7 @@ import {z} from "zod";
 import {defineTool} from "../../define-tool.js";
 import {jiraDownload} from "../../jira-client.js";
 import {START_DATE_FIELD} from "../../ticket-fields.js";
+import {worklogTypes} from "../worklog/worklog-pro.js";
 
 // Formats MCP clients can render as images; SVG and the rest stay name-only.
 const IMAGE_TYPES = new Set([
@@ -87,13 +88,14 @@ const formatComments = ({comments = [], total = 0} = {}) => {
 };
 
 // Same cap as comments; the newest worklogs are the ones people come to fix.
-const formatWorklogs = ({worklogs = [], total = 0} = {}) => {
+const formatWorklogs = async (jira, {worklogs = [], total = 0} = {}) => {
   if (!worklogs.length) return "Worklogs: None";
   const shown = worklogs.slice(-COMMENT_LIMIT);
+  const types = await Promise.all(shown.map((w) => worklogTypes(jira, w.id)));
   const body = shown
     .map(
-      (w) =>
-        `  #${w.id} [${w.started?.slice(0, 10)}] ${w.author?.displayName || "Unknown"} ${w.timeSpent}${w.comment ? `: ${w.comment}` : ""}`,
+      (w, i) =>
+        `  #${w.id} [${w.started?.slice(0, 10)}] ${w.author?.displayName || "Unknown"} ${w.timeSpent} ${types[i]}${w.comment ? `: ${w.comment}` : ""}`,
     )
     .join("\n");
   const all = Math.max(total, worklogs.length);
@@ -137,7 +139,7 @@ export const registerGetTicket = (
           .boolean()
           .optional()
           .describe(
-            "Include the ticket's worklogs with their IDs (default false, one extra request)",
+            "Include the ticket's worklogs with their IDs and WorklogPRO types (default false; one extra request plus one per worklog shown)",
           ),
         ticket_id: z.string().describe("Jira issue key, e.g. PROJ-234"),
       }),
@@ -176,7 +178,10 @@ export const registerGetTicket = (
       // The issue's inline worklog field is capped by Jira and may drop the
       // newest entries, so read the full list from its own endpoint.
       const worklogs = include_worklogs
-        ? await jira("GET", `/issue/${ticket_id}/worklog`)
+        ? await formatWorklogs(
+            jira,
+            (await jira("GET", `/issue/${ticket_id}/worklog`)) ?? {},
+          )
         : null;
       const text = [
         `Key: ${issue.key}`,
@@ -192,7 +197,7 @@ export const registerGetTicket = (
         f.description ? `Description:\n${f.description}` : null,
         subtasks ? `Subtasks:\n${subtasks}` : null,
         include_comments ? formatComments(f.comment) : null,
-        worklogs ? formatWorklogs(worklogs) : null,
+        worklogs,
         line(
           "Attachments",
           attachments.map((a) => `${a.filename} (#${a.id})`).join(", "),
