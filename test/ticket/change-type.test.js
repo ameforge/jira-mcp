@@ -97,6 +97,13 @@ test("update_ticket converts a sub-task to a standard type through Jira's wizard
   assert.equal(chosen.get("note"), `"a" 'b' <c> &lt;`);
 });
 
+test("update_ticket accepts a type name in other case once Jira applied it", async () => {
+  const wizard = convertWizard();
+  const result = await convertToTask(wizard, [], {issue_type: "task"});
+  assert.equal(result.isError, undefined);
+  assert.equal(result.content[0].text, "PROJ-1 updated successfully");
+});
+
 test("update_ticket says the type changed when the later field save fails", async () => {
   const {forms, sent} = convertWizard();
   const server = fakeServer();

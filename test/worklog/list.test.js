@@ -3,6 +3,9 @@ import {test} from "node:test";
 import {registerListWorklogs} from "../../src/tools/worklog/list.js";
 import {fakeServer} from "../helpers/fake-server.js";
 
+// The expected times below are in this zone, whatever the machine's zone is.
+process.env.JIRA_TIMEZONE = "Asia/Ho_Chi_Minh";
+
 const TYPES_PATH = "/rest/com.deniz.jira.worklog/1.0/worklog/";
 
 // types: worklog ID to its WorklogPRO attributes, or an Error to throw.

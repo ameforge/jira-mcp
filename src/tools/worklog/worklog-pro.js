@@ -87,14 +87,16 @@ const resolveAlias = (map, name, label) => {
   return id;
 };
 
-// WorklogPRO interprets the start time in the Jira server's timezone.
-const WORKLOG_TZ = process.env.JIRA_TIMEZONE || "Asia/Ho_Chi_Minh";
-
 // Convert an ISO instant into the two formats the WorklogPRO form expects:
 // startDateJS in Jira display format (authoritative) and startDate as a hidden
 // "YYYY-MM-DD HH:mm" mirror, both rendered in the Jira server timezone.
 export const worklogDates = (iso) => {
   const date = new Date(iso);
+  // WorklogPRO interprets the start time in the Jira server's timezone. Without
+  // JIRA_TIMEZONE the machine's own zone is the best guess.
+  const WORKLOG_TZ =
+    process.env.JIRA_TIMEZONE ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone;
   const display = Object.fromEntries(
     new Intl.DateTimeFormat("en-US", {
       day: "2-digit",

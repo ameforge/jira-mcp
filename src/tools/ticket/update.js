@@ -17,7 +17,9 @@ const verifyFieldApplied = async (
 ) => {
   const check = await jira("GET", `/issue/${ticket_id}?fields=${field}`);
   const actual = readActual(check.fields);
-  if (actual !== expected) {
+  // Jira matches type names and issue keys ignoring case, so "task" landing as
+  // "Task" is applied.
+  if (actual?.toLowerCase() !== expected.toLowerCase()) {
     throw new Error(
       `${ticket_id} was updated, but Jira did not apply the ${label} change ` +
         `(still "${actual || noneText}"). ${hint}`,
@@ -183,7 +185,10 @@ export const registerUpdateTicket = (
       );
       // A sub-task keeps its old parent after the PUT; Jira only re-parents
       // it through the Move form.
-      if (current.parent && current.parent.key !== parent_key) {
+      if (
+        current.parent &&
+        current.parent.key.toLowerCase() !== parent_key.toLowerCase()
+      ) {
         await moveSubtaskParent(forms, id, parent_key);
         changed.push(`parent to ${parent_key}`);
       }

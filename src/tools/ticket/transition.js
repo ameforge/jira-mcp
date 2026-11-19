@@ -37,11 +37,23 @@ const transitionOne = async (jira, ticket_id, status) => {
   if (!wanted) throw new Error("status is empty");
   const pick = (want) =>
     transitions.find((t) => namesOf(t).some((n) => n === want));
-  const match =
+  let match =
     pick(wanted) ||
-    (ALIASES[wanted] ?? []).reduce((found, a) => found || pick(a), null) ||
+    (ALIASES[wanted] ?? []).reduce((found, a) => found || pick(a), null);
+  if (!match) {
     // Substring last: it is the loosest and would shadow better alias hits.
-    transitions.find((t) => namesOf(t).some((n) => n.includes(wanted)));
+    const loose = transitions.filter((t) =>
+      namesOf(t).some((n) => n.includes(wanted)),
+    );
+    // Two loose hits ("progress" in "Start Progress" and "Stop Progress")
+    // would be a guess, and a wrong transition can close the ticket.
+    if (loose.length > 1) {
+      throw new Error(
+        `Status "${status}" matches ${loose.length} transitions: ${loose.map(label).join(", ")}. Pass the full name of one.`,
+      );
+    }
+    match = loose[0];
+  }
   if (!match) {
     const available = transitions.map(label).join(", ");
     throw new Error(`Status "${status}" not found. Available: ${available}`);

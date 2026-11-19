@@ -1,4 +1,4 @@
-import {AUTH_HEADER, JIRA_HOST} from "./jira-client.js";
+import {AUTH_HEADER, JIRA_HOST, onTimeout, TIMEOUT_MS} from "./jira-client.js";
 
 // Field errors are class="error"; the banner is class="aui-message
 // aui-message-error" with its text in nested tags, so each block is read up to
@@ -67,6 +67,14 @@ export const formSession = (host = JIRA_HOST, auth = AUTH_HEADER) => {
   const cookies = new Map();
   // A submit without fields still POSTs: body "" means POST, undefined GET.
   const send = async (url, body) => {
+    // Credentials and session cookies go to Jira only, never to wherever a
+    // redirect or a form action points (an SSO page, another host).
+    const origin = new URL(url).origin;
+    if (origin !== new URL(host).origin) {
+      throw new Error(
+        `Jira sent the form to ${origin}, which is not JIRA_HOST; nothing was sent there. Set JIRA_HOST to Jira's base URL. An earlier step of this change may already be saved.`,
+      );
+    }
     const post = body !== undefined;
     const res = await fetch(url, {
       body,
@@ -80,7 +88,8 @@ export const formSession = (host = JIRA_HOST, auth = AUTH_HEADER) => {
       },
       method: post ? "POST" : "GET",
       redirect: "manual",
-    });
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    }).catch(onTimeout(post ? "POST" : "GET"));
     for (const c of res.headers.getSetCookie()) {
       const [pair] = c.split(";");
       const at = pair.indexOf("=");

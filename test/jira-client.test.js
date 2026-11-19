@@ -42,14 +42,38 @@ test("jiraRequest does not retry a 4xx", async () => {
   assert.equal(calls.length, 1);
 });
 
-test("jiraRequest does not replay a POST", async () => {
-  const calls = stubFetch([500]);
-  await assert.rejects(
-    () => jiraRequest("POST", "/issue/PROJ-1/comment", {body: "hi"}),
-    /Jira API 500/,
-  );
-  assert.equal(calls.length, 1);
-});
+// A 500 may come after the write went through: a replayed POST duplicates
+// it, a replayed DELETE turns a done delete into a 404.
+for (const [method, body] of [["POST", {body: "hi"}], ["DELETE"]]) {
+  test(`jiraRequest does not replay a ${method}`, async () => {
+    const calls = stubFetch([500]);
+    await assert.rejects(
+      () => jiraRequest(method, "/issue/PROJ-1/comment", body),
+      /Jira API 500/,
+    );
+    assert.equal(calls.length, 1);
+  });
+}
+
+// A timed-out write may have been saved; only a replayable one may be retried.
+for (const [method, says] of [
+  ["POST", /may still have been saved, so do not retry/],
+  ["DELETE", /may still have been saved, so do not retry/],
+  ["GET", /within 30s; safe to retry/],
+]) {
+  test(`jiraRequest says what a timed-out ${method} means for a retry`, async () => {
+    globalThis.fetch = async () => {
+      throw new DOMException(
+        "The operation was aborted due to timeout",
+        "TimeoutError",
+      );
+    };
+    await assert.rejects(
+      () => jiraRequest(method, "/issue/PROJ-1/comment"),
+      says,
+    );
+  });
+}
 
 test("jiraRequest returns null for a 201 with an empty body", async () => {
   stubFetch([201], "");

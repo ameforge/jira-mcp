@@ -91,6 +91,38 @@ test("a form session reports a redirect that lands on another page", async () =>
   assert.equal(page.html, "<form></form>");
 });
 
+test("a form session never sends credentials to a redirect off the Jira host", async () => {
+  const sent = stubFetch({
+    "/login": {body: "sso page"},
+    "/secure/Start.jspa": {
+      cookie: "JSESSIONID=s1",
+      location: "https://sso.other/login",
+      status: 302,
+    },
+  });
+  await assert.rejects(
+    () => formSession(HOST, "Basic abc").open("/secure/Start.jspa"),
+    /https:\/\/sso\.other, which is not JIRA_HOST/,
+  );
+  assert.deepEqual(
+    sent.map((s) => s.url),
+    [`${HOST}/secure/Start.jspa`],
+  );
+});
+
+test("a form submit that times out warns not to retry", async () => {
+  globalThis.fetch = async () => {
+    throw new DOMException(
+      "The operation was aborted due to timeout",
+      "TimeoutError",
+    );
+  };
+  await assert.rejects(
+    () => formSession(HOST, "x").submit("/secure/Log.jspa", {a: "1"}),
+    /POST within 30s; it may still have been saved, so do not retry/,
+  );
+});
+
 for (const [where, body, token] of [
   [
     "a hidden input",

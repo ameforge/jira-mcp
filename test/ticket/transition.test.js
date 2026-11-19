@@ -51,6 +51,17 @@ test("transition_ticket prefers an alias hit over a substring hit", async () => 
   assert.deepEqual(posted, ["21"]);
 });
 
+test("transition_ticket posts nothing when a substring hits two transitions", async () => {
+  const {posted, result} = await transitionTo("progress", [
+    {id: "11", name: "Start Progress", to: {name: "Doing"}},
+    {id: "12", name: "Stop Progress", to: {name: "To Do"}},
+  ]);
+  assert.deepEqual(posted, []);
+  assert.equal(result.isError, true);
+  assert.match(result.content[0].text, /matches 2 transitions/);
+  assert.match(result.content[0].text, /Stop Progress -> To Do/);
+});
+
 test("transition_ticket posts nothing for an empty status", async () => {
   const {posted, result} = await transitionTo("  ");
   assert.deepEqual(posted, []);

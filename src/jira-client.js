@@ -29,9 +29,29 @@ const HEADERS = {
 // Jira Data Center throws transient 5xx/429 under load. Retry only methods
 // that are safe to replay: a 500 on POST may already have created a comment,
 // a worklog or a transition, so replaying it would duplicate the side effect.
+// DELETE is left out too: a 500 may come after the delete went through, and
+// the replay's 404 would report a removed item as a failure.
 const RETRY_STATUS = new Set([429, 500, 502, 503, 504]);
-const REPLAYABLE = new Set(["GET", "PUT", "DELETE"]);
+const REPLAYABLE = new Set(["GET", "PUT"]);
 const MAX_RETRIES = 2;
+// A Jira that stops answering would otherwise hang the tool call forever.
+export const TIMEOUT_MS = 30_000;
+
+/**
+ * Turns fetch's bare TimeoutError into one the caller can act on: a write
+ * that timed out may still have been saved, and a blind retry of a POST
+ * logs the same worklog or comment twice. Any other error passes through.
+ * @param {string} method
+ * @returns {(err: Error) => never}
+ */
+export const onTimeout = (method) => (err) => {
+  if (err.name !== "TimeoutError") throw err;
+  throw new Error(
+    REPLAYABLE.has(method)
+      ? `Jira did not answer within ${TIMEOUT_MS / 1000}s; safe to retry`
+      : `Jira did not answer the ${method} within ${TIMEOUT_MS / 1000}s; it may still have been saved, so do not retry: ask the user to check in Jira first`,
+  );
+};
 
 // Paths are relative to /rest/api/2 unless they name another REST API
 // themselves (e.g. /rest/agile/1.0/... for sprints and boards).
@@ -43,7 +63,8 @@ export const jiraRequest = async (method, path, body, attempt = 0) => {
     body: body ? JSON.stringify(body) : undefined,
     headers: HEADERS,
     method,
-  });
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  }).catch(onTimeout(method));
   if (!res.ok) {
     if (
       attempt < MAX_RETRIES &&
