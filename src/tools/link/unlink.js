@@ -3,7 +3,7 @@ import {defineTool} from "../../define-tool.js";
 
 // A link type is addressable by its name ("Bugs") or by either verb ("is bug
 // of", "has bug"), since callers usually say the relation, not the type.
-const namesOf = (type) =>
+export const namesOf = (type) =>
   [type.name, type.inward, type.outward].map((n) => n.toLowerCase());
 
 export const registerUnlinkIssues = (server, jiraRequest) => {

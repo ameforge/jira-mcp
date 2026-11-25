@@ -20,7 +20,8 @@ export const registerSearchTickets = (server, jiraRequest) => {
     server,
     "search_tickets",
     {
-      description: "Search Jira tickets using JQL query language",
+      description:
+        "Search Jira tickets using JQL query language. Jira may reject ORDER BY parent; sort by key instead.",
       inputSchema: z.object({
         jql: z
           .string()

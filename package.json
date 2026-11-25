@@ -4,6 +4,7 @@
   },
   "description": "MCP server for Jira Server/Data Center (REST API v2)",
   "devDependencies": {
+    "@ameforge/atlassian-request": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@rsbuild/core": "^2.3.1",
     "dotenv": "^16.6.1",
@@ -55,5 +56,5 @@
     "test": "node --test"
   },
   "type": "module",
-  "version": "2.19.1"
+  "version": "2.20.0"
 }

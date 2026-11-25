@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {registerLinkIssues} from "../src/tools/link/link.js";
 import {registerCreateTicket} from "../src/tools/ticket/create.js";
 import {registerSearchTickets} from "../src/tools/ticket/search.js";
 import {registerUpdateTicket} from "../src/tools/ticket/update.js";
@@ -9,7 +8,6 @@ import {fakeServer} from "./helpers/fake-server.js";
 // Error texts are the ones Jira Data Center returned in real sessions.
 const ISSUE_TYPE_JQL = `Jira API 400: {"errorMessages":["The value 'QA-Subtask' does not exist for the field 'issuetype'."],"errors":{}}`;
 const ISSUE_TYPE_FIELD = `Jira API 400: {"errorMessages":[],"errors":{"issuetype":"Could not find issuetype by id or name."}}`;
-const LINK_TYPE = `Jira API 404: {"errorMessages":["No issue link type with name 'Relates to' found."],"errors":{}}`;
 
 const UPDATE_PLAN = "/issue/PROJ-12?fields=issuetype,status,project";
 const LOOKUPS = {
@@ -21,7 +19,6 @@ const LOOKUPS = {
     },
     id: "12",
   },
-  "/issueLinkType": {issueLinkTypes: [{name: "Blocks"}, {name: "Relates"}]},
   "/issuetype": [{name: "Task"}, {name: "QA Sub-Task"}, {name: "Task"}],
   "/project/PROJ": {issueTypes: [{name: "Story"}, {name: "QA Sub-Task"}]},
 };
@@ -66,14 +63,6 @@ for (const [register, name, args, jiraError, lookup, valid] of [
     // Planning the type change reads the ticket and its project first.
     [UPDATE_PLAN, "/project/PROJ", "/project/PROJ"],
     "Valid issue types: Story, QA Sub-Task",
-  ],
-  [
-    registerLinkIssues,
-    "link_issues",
-    {inward_issue: "PROJ-1", link_type: "Relates to", outward_issue: "PROJ-2"},
-    LINK_TYPE,
-    "/issueLinkType",
-    "Valid link types: Blocks, Relates",
   ],
 ]) {
   test(`${name} lists the valid names when Jira rejects the type`, async () => {

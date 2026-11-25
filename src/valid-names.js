@@ -1,4 +1,4 @@
-// Jira rejects an unknown issue type or link type without naming the valid
+// Jira rejects an unknown issue type without naming the valid
 // ones, so the caller guesses again ("QA-Subtask", "QA Subtask", ...). On that
 // error, fetch the valid names and append them. Any other error, or a failed
 // lookup, rethrows Jira's original message untouched.
@@ -28,9 +28,4 @@ export const withIssueTypes = (call, jira, project) =>
             (t) => t.name,
           )
         : (await jira("GET", "/issuetype")).map((t) => t.name),
-  );
-
-export const withLinkTypes = (call, jira) =>
-  withValidNames(call, /issue link type/i, "link types", async () =>
-    (await jira("GET", "/issueLinkType")).issueLinkTypes.map((t) => t.name),
   );

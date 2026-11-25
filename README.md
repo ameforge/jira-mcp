@@ -64,6 +64,8 @@ Official setup guides:
 
 | Variable                | Required | Description                                                     |
 | ----------------------- | -------- | --------------------------------------------------------------- |
+| `ATLASSIAN_MCP_USAGE`   | no       | Set to `off` to turn off the local usage log (see Usage log)    |
+| `ATLASSIAN_MCP_TOOLS`   | no       | Comma-separated tool or package names to expose (default all)   |
 | `JIRA_HOST`             | yes      | Base URL, e.g. `https://jira.company.com`                       |
 | `JIRA_USERNAME`         | yes*     | Jira username; `ATLASSIAN_USERNAME` is read when it is unset    |
 | `JIRA_PASSWORD`         | yes*     | Jira password; `ATLASSIAN_PASSWORD` is read when it is unset    |
@@ -110,6 +112,7 @@ curl -u user:pass https://jira.company.com/rest/api/2/field | jq '.[] | select(.
 | `delete_attachment`      | Delete an attachment from Jira (cannot be undone; IDs come from `get_ticket`)                                                                                                                                                                | `attachment_id`                                                                                                                                                                                  |
 | `download_attachment`    | Download a Jira attachment into a local directory (never overwrites; IDs come from `get_ticket`)                                                                                                                                             | `attachment_id`, `dir` (absolute)                                                                                                                                                                |
 | `generate_release_notes` | Generate Markdown release notes for a fix version, grouped by issue type                                                                                                                                                                     | `fix_version`, optional: `project`                                                                                                                                                               |
+| `usage_report`           | Done, calls and errors from the local usage log, per package and tool; with `format` set to `html`, also writes and opens a board page                                                                                                       | optional: `days` (default 30), `format` (`text` or `html`)                                                                                                                                       |
 
 ### Notes
 
@@ -135,6 +138,19 @@ curl -u user:pass https://jira.company.com/rest/api/2/field | jq '.[] | select(.
 - Register the server as `g-jira-mcp` and use that key in every project. The key becomes the tool prefix (`mcp__g-jira-mcp__get_ticket`), so a project that registers it under a different name exposes different tool names — an agent carrying the habit of one name into a project configured with the other gets `No such tool available`.
 - Transient Jira failures (429, 500, 502, 503, 504) are retried up to twice with a 250ms/500ms backoff. Only GET and PUT are replayed — a POST that returned 500 may already have created the comment, worklog or transition, so it fails fast instead of risking a duplicate, and a DELETE that returned 500 may already have gone through, so a replay would report a 404. A request Jira does not answer within 30 seconds fails; for a POST or DELETE, including a WorklogPRO form submit, the error says the write may already be saved and must not be retried before checking Jira.
 - All logs go to stderr; stdout is reserved for the MCP protocol.
+
+## Usage log
+
+Every tool call is logged to a local file with the time, the package, the tool name and whether the call succeeded. Arguments and content are never logged, and nothing is sent anywhere. All the Atlassian packages share this one file.
+
+The file is `$XDG_CONFIG_HOME/atlassian-mcp/usage.jsonl` when `XDG_CONFIG_HOME` is set. Otherwise it is `%APPDATA%\atlassian-mcp\usage.jsonl` on Windows and `~/.config/atlassian-mcp/usage.jsonl` elsewhere. Set `ATLASSIAN_MCP_USAGE=off` to stop logging. A log that cannot be written never fails a tool call.
+
+Call the `usage_report` tool to read the log. Its optional parameters are:
+
+- `days`: how many days back to count (default 30).
+- `format`: `text` (default) gives a summary per package and tool. `html` also writes `board.html` next to the log and opens it in the browser. The board has range buttons for 7, 30 and 90 days and all time, totals for done, calls and errors, a done per day chart, a table per tool and a button that saves a PNG share card.
+
+Done counts the write calls that succeeded. Read tools are those whose names start with `get_`, `list_`, `search_`, `find_`, `download_`, `generate_` or `compare_`. Every other tool counts as a write. Because the file is shared, the report also counts calls made through the other packages.
 
 ## Example prompts
 

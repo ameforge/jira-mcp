@@ -1,7 +1,7 @@
 import {z} from "zod";
 import {runBatch} from "../../batch.js";
 import {defineTool} from "../../define-tool.js";
-import {withLinkTypes} from "../../valid-names.js";
+import {namesOf} from "./unlink.js";
 
 const inwardIssue = z
   .string()
@@ -10,19 +10,32 @@ const inwardIssue = z
 const linkType = z
   .string()
   .default("Blocks")
-  .describe("Link type: Blocks, Clones, Relates to, Duplicate, etc.");
-
-const linkOne = async (jira, inward_issue, outward_issue, link_type) => {
-  await withLinkTypes(
-    () =>
-      jira("POST", "/issueLink", {
-        inwardIssue: {key: inward_issue},
-        outwardIssue: {key: outward_issue},
-        type: {name: link_type},
-      }),
-    jira,
+  .describe(
+    'Link type name or verb, e.g. "Blocks", "Relates", "is blocked by"',
   );
-  return `Linked: ${inward_issue} "${link_type}" ${outward_issue}`;
+
+// The schema default does not run for a caller that skips validation.
+const resolveLinkType = async (jira, text = "Blocks") => {
+  const want = text.trim().toLowerCase();
+  const {issueLinkTypes} = await jira("GET", "/issueLinkType");
+  const at = (i) => issueLinkTypes.find((t) => namesOf(t)[i] === want);
+  const type = at(0) ?? at(2);
+  if (type) return {swap: false, type};
+  const inward = at(1);
+  if (inward) return {swap: true, type: inward};
+  throw new Error(
+    `Unknown link type "${text}". Valid link types: ${issueLinkTypes.map((t) => t.name).join(", ")}`,
+  );
+};
+
+const linkOne = async (jira, a, b, {swap, type}) => {
+  const [from, to] = swap ? [b, a] : [a, b];
+  await jira("POST", "/issueLink", {
+    inwardIssue: {key: from},
+    outwardIssue: {key: to},
+    type: {name: type.name},
+  });
+  return `Linked: ${from} ${type.outward} ${to} (${type.name})`;
 };
 
 export const registerLinkIssues = (server, jiraRequest) => {
@@ -39,8 +52,13 @@ export const registerLinkIssues = (server, jiraRequest) => {
           .describe("Issue key being linked TO, e.g. PROJ-2"),
       }),
     },
-    ({inward_issue, outward_issue, link_type}, jira) =>
-      linkOne(jira, inward_issue, outward_issue, link_type),
+    async ({inward_issue, outward_issue, link_type}, jira) =>
+      linkOne(
+        jira,
+        inward_issue,
+        outward_issue,
+        await resolveLinkType(jira, link_type),
+      ),
     jiraRequest,
   );
 
@@ -59,11 +77,12 @@ export const registerLinkIssues = (server, jiraRequest) => {
           .describe('Issue keys being linked TO, e.g. ["PROJ-2", "PROJ-3"]'),
       }),
     },
-    // The schema default does not run for a caller that skips validation.
-    ({inward_issue, outward_issues, link_type = "Blocks"}, jira) =>
-      runBatch(outward_issues, (key) =>
-        linkOne(jira, inward_issue, key, link_type),
-      ),
+    async ({inward_issue, outward_issues, link_type}, jira) => {
+      const resolved = await resolveLinkType(jira, link_type);
+      return runBatch(outward_issues, (key) =>
+        linkOne(jira, inward_issue, key, resolved),
+      );
+    },
     jiraRequest,
   );
 };
