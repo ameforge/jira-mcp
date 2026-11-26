@@ -219,3 +219,24 @@ test("update_tickets refuses a type change instead of opening a wizard per ticke
   assert.equal(result.isError, true);
   assert.match(result.content[0].text, /issue_type not supported/);
 });
+
+test("update_ticket sends fix_versions as Jira's fixVersions names", async () => {
+  const server = fakeServer();
+  const calls = [];
+  registerUpdateTicket(server, async (method, path, body) => {
+    calls.push([method, path, body]);
+    return null;
+  });
+
+  await server.tools.get("update_ticket")({
+    fix_versions: ["Release_08/12/2026"],
+    ticket_id: "PROJ-1",
+  });
+  assert.deepEqual(calls, [
+    [
+      "PUT",
+      "/issue/PROJ-1",
+      {fields: {fixVersions: [{name: "Release_08/12/2026"}]}},
+    ],
+  ]);
+});

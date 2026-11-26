@@ -63,6 +63,12 @@ export const registerUpdateTicket = (
         "Epic ticket key to set as this issue's Epic Link (shows under " +
           'the Epic\'s "Issues in Epic" panel, not Linked Issues)',
       ),
+    fix_versions: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'Fix Version/s names to set, replacing the current ones, e.g. ["Release_08/12/2026"]; empty array clears',
+      ),
     implementation_notes: z
       .string()
       .optional()
@@ -106,6 +112,7 @@ export const registerUpdateTicket = (
       issue_type,
       parent_key,
       epic_key,
+      fix_versions,
       labels,
       due_date,
       start_date,
@@ -138,6 +145,9 @@ export const registerUpdateTicket = (
     if (parent_key !== undefined) fields.parent = {key: parent_key};
     if (epic_key !== undefined) fields[EPIC_LINK_FIELD] = epic_key;
     if (labels !== undefined) fields.labels = labels;
+    if (fix_versions !== undefined) {
+      fields.fixVersions = fix_versions.map((name) => ({name}));
+    }
     // Jira cannot parse "" as a date; null is how it clears one.
     if (due_date !== undefined) fields.duedate = due_date || null;
     if (start_date !== undefined) fields[START_DATE_FIELD] = start_date || null;
@@ -253,7 +263,7 @@ export const registerUpdateTicket = (
     "update_tickets",
     {
       description:
-        "Apply the same field values (assignee, priority, labels, dates, estimate, epic_key) to several Jira tickets. Tickets are processed in order; a failure on one does not stop the rest, and the result lists each ticket's outcome. Use update_ticket for per ticket text or type changes.",
+        "Apply the same field values (assignee, priority, labels, fix_versions, dates, estimate, epic_key) to several Jira tickets. Tickets are processed in order; a failure on one does not stop the rest, and the result lists each ticket's outcome. Use update_ticket for per ticket text or type changes.",
       inputSchema: schema.omit(BULK_OMIT).extend({
         ticket_ids: z
           .array(z.string())
