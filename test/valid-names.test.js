@@ -23,7 +23,6 @@ const LOOKUPS = {
   "/project/PROJ": {issueTypes: [{name: "Story"}, {name: "QA Sub-Task"}]},
 };
 
-// Fails the tool's own request with jiraError, answers the name lookups.
 const call = async (register, name, args, jiraError) => {
   const server = fakeServer();
   const lookups = [];

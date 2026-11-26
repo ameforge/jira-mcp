@@ -2,9 +2,7 @@ import {z} from "zod";
 import {runBatch} from "../../batch.js";
 import {defineTool} from "../../define-tool.js";
 
-// Names agents reach for that real workflows spell differently. Each maps to an
-// ordered candidate list tried against whatever this issue actually offers, so
-// the same alias works on a workflow with "Done" and one with "Closed".
+// Ordered candidates per alias, so "done" works on a workflow with "Done" and on one with "Closed".
 const ALIASES = {
   // No "done" fallback: release notes count Done as shipped.
   cancelled: ["cancelled", "canceled", "won't do", "rejected"],
@@ -22,8 +20,7 @@ const ALIASES = {
   todo: ["to do", "todo", "open", "backlog"],
 };
 
-// A transition is addressable by its own name ("Resolve") or by the status it
-// lands on ("Done"); callers pass a status, so both count as a match.
+// Match a transition by its name ("Resolve") or its target status ("Done"): callers pass a status.
 const namesOf = (t) =>
   [t.name, t.to?.name].filter(Boolean).map((n) => n.toLowerCase());
 
@@ -45,8 +42,7 @@ const transitionOne = async (jira, ticket_id, status) => {
     const loose = transitions.filter((t) =>
       namesOf(t).some((n) => n.includes(wanted)),
     );
-    // Two loose hits ("progress" in "Start Progress" and "Stop Progress")
-    // would be a guess, and a wrong transition can close the ticket.
+    // Two loose hits ("Start Progress", "Stop Progress") are a guess, and a wrong one can close the ticket.
     if (loose.length > 1) {
       throw new Error(
         `Status "${status}" matches ${loose.length} transitions: ${loose.map(label).join(", ")}. Pass the full name of one.`,

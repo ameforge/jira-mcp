@@ -1,14 +1,12 @@
-// Jira's REST API ignores a parent change on an existing sub-task, so this
-// drives the UI's Move > Change Parent form instead. Not retried: it is a POST.
+// REST ignores a parent change on an existing sub-task, so use the Move form; a POST, so never retried.
 /**
  * @param {typeof import("../../web-form.js").formSession} forms
- * @param {string} issueId numeric issue id (the form does not take a key)
+ * @param {string} issueId numeric id, the form does not take a key
  * @param {string} parentKey
  */
 export const moveSubtaskParent = async (forms, issueId, parentKey) => {
   const session = forms();
-  // The parent form redirects to a session timeout unless the Move wizard was
-  // opened first in the same session, and its atl_token is tied to that session.
+  // Change Parent redirects to a session timeout unless the Move wizard was opened first in this session.
   await session.open(
     `/secure/MoveSubTaskChooseOperation!default.jspa?id=${issueId}`,
   );
@@ -27,8 +25,7 @@ export const moveSubtaskParent = async (forms, issueId, parentKey) => {
     id: String(issueId),
     parentIssue: parentKey,
   });
-  // Success redirects to the issue; a rejected parent re-renders the form
-  // with the reason in an error element.
+  // Jira redirects to the issue on success and re-renders the form with an error on rejection.
   if (!res.redirected) {
     throw new Error(
       `Jira rejected the parent change to ${parentKey} (HTTP ${res.status})` +

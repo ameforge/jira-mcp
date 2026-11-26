@@ -7,9 +7,7 @@ import {formSession} from "../../web-form.js";
 import {planTypeChange, runTypeWizard} from "./change-type.js";
 import {moveSubtaskParent} from "./move-subtask.js";
 
-// Jira's REST API silently ignores certain field writes (issue-type/Sub-task
-// conversions in particular) instead of rejecting the request, so callers
-// that depend on the write actually landing need to re-read and compare.
+// Jira REST silently ignores some field writes (e.g. sub-task conversions), so re-read and compare.
 const verifyFieldApplied = async (
   jira,
   ticket_id,
@@ -17,8 +15,7 @@ const verifyFieldApplied = async (
 ) => {
   const check = await jira("GET", `/issue/${ticket_id}?fields=${field}`);
   const actual = readActual(check.fields);
-  // Jira matches type names and issue keys ignoring case, so "task" landing as
-  // "Task" is applied.
+  // Jira matches type names and issue keys ignoring case, so "task" landing as "Task" is applied.
   if (actual?.toLowerCase() !== expected.toLowerCase()) {
     throw new Error(
       `${ticket_id} was updated, but Jira did not apply the ${label} change ` +
@@ -27,9 +24,7 @@ const verifyFieldApplied = async (
   }
 };
 
-// Fields that make sense to set to one value on many tickets. Left out: text that
-// is per ticket (summary, description, notes) and the type and parent changes,
-// which open an interactive Jira wizard per ticket.
+// Type and parent changes open an interactive Jira wizard per ticket, so bulk updates leave them out.
 const BULK_OMIT = /** @type {const} */ ({
   allow_field_loss: true,
   description: true,
@@ -159,8 +154,7 @@ export const registerUpdateTicket = (
       throw new Error("No fields provided to update");
     }
 
-    // REST rejects a type change to a sub-task type and ignores one from it,
-    // so those go through Jira's wizard, which also sets the new parent.
+    // REST rejects a type change to a sub-task type and ignores one from it, so that goes via the wizard.
     const typePlan =
       issue_type !== undefined &&
       (await planTypeChange(jira, ticket_id, issue_type, parent_key));
@@ -169,10 +163,7 @@ export const registerUpdateTicket = (
       delete fields.parent;
     }
 
-    // The wizards run before the REST write: they stop with "nothing was
-    // changed", which only holds while no other field has been saved yet.
-    // The type wizard goes first: converting to a sub-task sets the parent.
-    // What the wizards already changed, for an error after them.
+    // Wizards precede the PUT so "nothing was changed" stays true; type first: converting sets the parent.
     const changed = [];
     if (typePlan) {
       await runTypeWizard(forms, typePlan, allow_field_loss);
@@ -183,8 +174,7 @@ export const registerUpdateTicket = (
         "GET",
         `/issue/${ticket_id}?fields=parent`,
       );
-      // A sub-task keeps its old parent after the PUT; Jira only re-parents
-      // it through the Move form.
+      // A sub-task keeps its old parent after the PUT; Jira only re-parents it through the Move form.
       if (
         current.parent &&
         current.parent.key.toLowerCase() !== parent_key.toLowerCase()
@@ -195,7 +185,6 @@ export const registerUpdateTicket = (
     }
 
     if (Object.keys(fields).length > 0 || body.update) {
-      // An issue key is "<project>-<n>", so the project comes from the key.
       await withIssueTypes(
         () => jira("PUT", `/issue/${ticket_id}`, body),
         jira,
@@ -273,8 +262,7 @@ export const registerUpdateTicket = (
       }),
     },
     ({ticket_ids, ...fields}, jira) => {
-      // The schema already drops these; the guard keeps the wizard paths closed
-      // for any caller that skips schema validation.
+      // The schema drops these too; this guard covers callers that skip schema validation.
       const banned = Object.keys(fields).filter((k) => k in BULK_OMIT);
       if (banned.length) {
         throw new Error(

@@ -1,8 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
 
-// Minimal stand-in for McpServer: captures the registered handler so tests
-// can invoke a tool directly without an MCP transport.
 export const fakeServer = () => {
   const tools = new Map();
   return {
@@ -11,9 +9,6 @@ export const fakeServer = () => {
   };
 };
 
-// Registers a tool against a fake Jira that records every request and calls
-// it once. For tools that are a single Jira request, that request is the
-// whole contract.
 export const callTool = async (register, name, args) => {
   const server = fakeServer();
   const requests = [];
@@ -25,9 +20,6 @@ export const callTool = async (register, name, args) => {
   return {isError: result.isError, requests, text: result.content[0].text};
 };
 
-// Stand-in for formSession: answers each open/submit with the page whose key
-// the URL contains (first match wins; anything else is an empty 200 page) and
-// records every request, with the session it went through, in `sent`.
 export const fakeForms = (pages) => {
   const sent = [];
   let sessions = 0;
@@ -58,7 +50,6 @@ export const fakeForms = (pages) => {
   return {forms, sent};
 };
 
-// One test per [register, toolName, args, expectedRequest] row.
 export const testRequests = (cases) => {
   for (const [register, name, args, request] of cases) {
     test(`${name} sends ${request[0]} ${request[1]}`, async () => {

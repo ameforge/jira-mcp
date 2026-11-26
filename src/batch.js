@@ -1,6 +1,4 @@
-// Runs fn once per ticket key, in order, and reports every outcome. A failure on
-// one key must not stop the rest, but it must still surface as an error so the
-// caller does not take a partly failed batch for a success.
+// A failed key must not stop the rest, but must fail the call so a partial batch is not read as success.
 export const runBatch = async (keys, fn) => {
   const lines = [];
   let failed = 0;

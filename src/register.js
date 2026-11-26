@@ -23,7 +23,7 @@ import {registerListWorklogs} from "./tools/worklog/list.js";
 import {registerLogWork} from "./tools/worklog/log.js";
 import {registerUpdateWorklog} from "./tools/worklog/update.js";
 
-/** @param {any} server An McpServer, or anything with its registerTool. */
+/** @param {any} server */
 export const registerTools = (server) => {
   registerGetTicket(server);
   registerTransitionTicket(server);

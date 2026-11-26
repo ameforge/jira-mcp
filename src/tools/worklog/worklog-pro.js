@@ -1,6 +1,4 @@
-// WorklogPRO (Deniz) work-type / activity ids, keyed by user-friendly aliases.
-// Ids are the option values of the form's wa_1 / wa_2 selects. Id 8 is the
-// Correction activity, not a work type, so "fix" belongs to ACTIVITIES only.
+// Ids are the wa_1 / wa_2 form option values; 8 is the Correction activity, so "fix" is in ACTIVITIES only.
 export const WORK_TYPES = {
   code: 3,
   coding: 3,
@@ -35,8 +33,7 @@ export const ACTIVITIES = {
   review: 9,
 };
 
-// One alias per distinct id. Tool descriptions ship on every LLM request, so
-// they advertise these instead of every synonym; all aliases stay accepted.
+// Tool descriptions ship on every LLM request, so advertise one alias per id; all aliases stay accepted.
 export const canonicalNames = (map) => {
   const byId = new Map();
   for (const [name, id] of Object.entries(map)) {
@@ -45,17 +42,11 @@ export const canonicalNames = (map) => {
   return [...byId.values()].join(", ");
 };
 
-// The alias canonicalNames advertises for an id, so a listed type can be fed
-// straight back to log_work; an id missing from the table prints as is.
+// The alias canonicalNames advertises, so a printed type can be fed straight back to log_work.
 const nameOf = (map, id) =>
   Object.keys(map).find((k) => map[k] === Number(id)) ?? `type ${id}`;
 
-/**
- * A worklog's WorklogPRO types as "[work/activity]"; "[no type]" when either is
- * unset and "[type unknown]" when they cannot be read (e.g. no WorklogPRO).
- * REST worklogs omit them; WorklogPRO's API lists them as attrTypeId 1 (Type
- * of Work) and 2 (Type of Activity), in no fixed order.
- */
+// REST worklogs omit the types; WorklogPRO lists them as attrTypeId 1 (work) and 2 (activity), unordered.
 export const worklogTypes = async (jira, worklogId) => {
   try {
     const {workLogAttributes = []} =
@@ -74,8 +65,7 @@ export const worklogTypes = async (jira, worklogId) => {
   }
 };
 
-// Resolved here, before any request, so an unknown alias fails with nothing
-// posted and the tool never has to know the id tables.
+// Resolved before any request, so an unknown alias fails with nothing posted.
 const resolveAlias = (map, name, label) => {
   if (!name) return null;
   const id = map[name.toLowerCase()];
@@ -87,13 +77,9 @@ const resolveAlias = (map, name, label) => {
   return id;
 };
 
-// Convert an ISO instant into the two formats the WorklogPRO form expects:
-// startDateJS in Jira display format (authoritative) and startDate as a hidden
-// "YYYY-MM-DD HH:mm" mirror, both rendered in the Jira server timezone.
 export const worklogDates = (iso) => {
   const date = new Date(iso);
-  // WorklogPRO interprets the start time in the Jira server's timezone. Without
-  // JIRA_TIMEZONE the machine's own zone is the best guess.
+  // WorklogPRO interprets the start time in the Jira server's timezone.
   const WORKLOG_TZ =
     process.env.JIRA_TIMEZONE ||
     Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -137,17 +123,14 @@ const restLogWork = async (jira, ticketId, timeSpent, {comment, started}) => {
   return {id: worklog?.id};
 };
 
-// Log work through the WorklogPRO web form so Type of Work (wa_1) and Type of
-// Activity (wa_2) get set — the REST worklog API cannot set them. No REST
-// fallback once attributes are asked for: a worklog without them has to be
-// fixed by hand in the Jira UI, while a failure before posting is safe to retry.
+// REST cannot set wa_1/wa_2, and a worklog logged without them has to be fixed by hand, so no REST fallback.
 /**
- * @param {Function} jira jiraRequest, used for the REST path
- * @param {typeof import("../../web-form.js").formSession} forms used for the WorklogPRO form
+ * @param {Function} jira
+ * @param {typeof import("../../web-form.js").formSession} forms
  * @param {string} ticketId
  * @param {string} timeSpent
- * @param {{activity?: string, comment?: string, started?: string, workType?: string}} [opts] aliases, e.g. workType "dev", activity "review"
- * @returns {Promise<{id?: string}>} id only on the REST path; the form returns none
+ * @param {{activity?: string, comment?: string, started?: string, workType?: string}} [opts]
+ * @returns {Promise<{id?: string}>}
  */
 export const logWorkPro = async (
   jira,
@@ -159,13 +142,11 @@ export const logWorkPro = async (
   const {comment, started} = opts;
   const workType = resolveAlias(WORK_TYPES, opts.workType, "work_type");
   const activity = resolveAlias(ACTIVITIES, opts.activity, "activity");
-  // No attributes requested → plain REST worklog. The WorklogPRO form mandates
-  // Type of Activity, so routing an attribute-less log through it would fail.
+  // The WorklogPRO form mandates Type of Activity, so a log without types must go through REST.
   if (workType == null && activity == null) {
     return restLogWork(jira, ticketId, timeSpent, {comment, started});
   }
-  // The atl_token must match the session's atlassian.xsrf.token cookie, so the
-  // POST goes through the same session as this GET.
+  // The atl_token must match the session's atlassian.xsrf.token cookie, so GET and POST share a session.
   const session = forms();
   const form = await session.open(
     `/secure/WPCreateWorklogOnIssueWithWorkLogAction!default.jspa?issueKey=${encodeURIComponent(ticketId)}&decorator=dialog&inline=true`,
@@ -177,8 +158,7 @@ export const logWorkPro = async (
   }
   if (!form.token) throw new Error("WorklogPRO: CSRF token not found");
 
-  // The form pre-fills the current time in the exact formats Jira expects; reuse
-  // them as defaults so a worklog without an explicit start still posts.
+  // The form pre-fills the current time in the exact formats Jira expects; reuse them as defaults.
   const fieldValue = (name) =>
     form.html.match(new RegExp(`name="${name}"[^>]*value="([^"]*)"`))?.[1] ??
     "";
@@ -190,8 +170,7 @@ export const logWorkPro = async (
     remainingEstimateOptionsExpanded: "false",
     timeLogged: timeSpent,
   });
-  // startDateJS is authoritative and must be Jira's display format (e.g.
-  // "22/Jul/26 8:24 PM"); any other format is silently ignored.
+  // startDateJS wins and must be Jira's display format ("22/Jul/26 8:24 PM"); others are silently ignored.
   params.set("startDateJS", dates?.startDateJS ?? fieldValue("startDateJS"));
   params.set("startDate", dates?.startDate ?? fieldValue("startDate"));
   if (workType != null) params.set("wa_1", String(workType));
@@ -202,8 +181,7 @@ export const logWorkPro = async (
     `/secure/WPCreateWorklogOnIssueWithWorkLogAction.jspa?atl_token=${form.token}`,
     params,
   );
-  // No REST fallback here: a failed POST may still have created the worklog,
-  // and replaying it would log the time twice (same rule as jiraRequest).
+  // No REST fallback: a failed POST may still have created the worklog, and a replay would log it twice.
   if (!post.ok) {
     throw new Error(
       `WorklogPRO: submit failed (HTTP ${post.status}); do not retry, the worklog may already exist: ask the user to check the Work Log tab of ${ticketId} in Jira`,
@@ -212,8 +190,7 @@ export const logWorkPro = async (
   if (post.html.includes("XSRF Security Token Missing")) {
     throw new Error("WorklogPRO: XSRF token rejected");
   }
-  // A successful submit renders no form error; any error element (e.g.
-  // "Type of Activity is required") means the worklog was not created.
+  // Any error element (e.g. "Type of Activity is required") means the worklog was not created.
   if (post.errors || post.html.includes("aui-message-error")) {
     throw new Error(
       `WorklogPRO: ${post.errors || "the form reported an error without readable text"}; nothing was logged, fix the input and retry`,

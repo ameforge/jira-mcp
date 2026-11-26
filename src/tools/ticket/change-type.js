@@ -8,8 +8,6 @@ const decode = (s) =>
     .replace(/&gt;/g, ">")
     .replace(/&amp;/g, "&");
 
-// Reads the wizard's form: every field with the value the page pre-fills, the
-// select options (value and visible text), and the submit button.
 const parseForm = (html) => {
   const form = html.match(/<form\b[^>]*name="jiraform"[\s\S]*?<\/form>/)?.[0];
   if (!form) return null;
@@ -57,9 +55,6 @@ const parseForm = (html) => {
   };
 };
 
-// Drives one of Jira's classic convert/move wizards to the end. `answers` sets
-// fields by name wherever a step has them; everything else keeps the value the
-// page pre-filled, as the UI would submit it.
 const runWizard = async (
   forms,
   startPath,
@@ -83,8 +78,7 @@ const runWizard = async (
     for (const [name, value] of Object.entries(answers)) {
       if (form.fields.has(name)) form.fields.set(name, value);
     }
-    // Jira shows a status select (targetStatusId, beanTargetStatusId) only when
-    // the new workflow lacks the ticket's status; picking one is the user's call.
+    // Jira shows a status select only when the new workflow lacks the status; the user must pick one.
     const status = [...form.selects].find(([name]) => /status/i.test(name));
     if (status) {
       throw new Error(
@@ -94,8 +88,7 @@ const runWizard = async (
     }
     const [submitName, submitValue] = form.submit;
     const finishing = /^(finish|move)$/i.test(submitValue);
-    // The confirm page lists field values the new type cannot hold; Jira
-    // deletes them on Finish, so submit past that only on an explicit opt-in.
+    // Jira deletes the confirm page's "Removed fields" values on Finish, so go past it only on opt-in.
     if (finishing && !allowFieldLoss && /Removed fields/i.test(form.text)) {
       const removed = form.text.match(/Removed fields(.*?)(Cancel|$)/i)?.[1];
       throw new Error(
@@ -109,8 +102,7 @@ const runWizard = async (
       new URL(form.action, page.url).href,
       body,
     );
-    // A step that renders itself again with errors (e.g. a required field the
-    // new type needs) did not advance.
+    // Jira answers a failed step (e.g. a missing required field) by rendering the same form again.
     if (!next.done && parseForm(next.html)?.action === form.action) {
       throw new Error(
         `Jira stopped the issue type change of ${ticketId}: ${next.errors || "the step did not advance"}. Nothing was changed.`,
@@ -125,13 +117,11 @@ const runWizard = async (
   }
 };
 
-// Picks the Jira wizard for a type change to or from a sub-task type, which
-// the REST edit rejects or ignores. Returns null when REST can make it.
 /**
- * @param {Function} jira jiraRequest
+ * @param {Function} jira
  * @param {string} ticketId
- * @param {string} typeName target issue type name
- * @param {string} [parentKey] required when the target is a sub-task type
+ * @param {string} typeName
+ * @param {string} [parentKey]
  */
 export const planTypeChange = async (jira, ticketId, typeName, parentKey) => {
   const issue = await jira(
@@ -173,7 +163,7 @@ export const planTypeChange = async (jira, ticketId, typeName, parentKey) => {
 /**
  * @param {typeof import("../../web-form.js").formSession} forms
  * @param {NonNullable<Awaited<ReturnType<typeof planTypeChange>>>} plan
- * @param {boolean} [allowFieldLoss] let Jira delete field values the new type cannot hold
+ * @param {boolean} [allowFieldLoss]
  */
 export const runTypeWizard = (
   forms,

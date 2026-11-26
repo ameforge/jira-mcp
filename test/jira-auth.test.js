@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
 
-// Set before the module reads them. Empty values also keep dotenv from
-// filling them in from a local .env.
+// Empty, not unset: dotenv would fill an unset one from a local .env. Set before the module reads them.
 process.env.JIRA_TOKEN = "";
 process.env.JIRA_USERNAME = "";
 process.env.JIRA_PASSWORD = "jira-pass";

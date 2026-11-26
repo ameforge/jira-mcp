@@ -6,8 +6,7 @@ import dotenv from "dotenv";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({path: resolve(__dirname, "../.env")});
 
-// Tolerate MCP client configs that pass literal quotes or a trailing slash:
-// "https://host/" would build "//rest/..." and Jira answers 404 "null for uri".
+// MCP configs may pass quotes or a trailing slash; Jira answers "//rest/..." with 404 "null for uri".
 export const JIRA_HOST = (process.env.JIRA_HOST ?? "")
   .trim()
   .replace(/^["']|["']$/g, "")
@@ -27,17 +26,14 @@ const HEADERS = {
   "Content-Type": "application/json",
 };
 
-// A 500 on POST may already have created a comment, a worklog or a
-// transition, so only GET and PUT are replayed.
-const {onTimeout, send} = productRequest({
+// A 500 on POST may already have created a comment, a worklog or a transition, so it is not replayed.
+const {fetchHeaders, onTimeout, send} = productRequest({
   name: "Jira",
   replayable: ["GET", "PUT"],
 });
 
 export {onTimeout, TIMEOUT_MS};
 
-// Paths are relative to /rest/api/2 unless they name another REST API
-// themselves (e.g. /rest/agile/1.0/... for sprints and boards).
 export const jiraRequest = (method, path, body) =>
   send(
     method,
@@ -45,17 +41,14 @@ export const jiraRequest = (method, path, body) =>
     {body: body ? JSON.stringify(body) : undefined, headers: HEADERS},
   );
 
-// Attachment content is binary and lives at an absolute URL outside
-// /rest/api/2, so it cannot go through jiraRequest. Returns base64.
+// Not jiraRequest: attachment content is binary and lives at an absolute URL outside /rest/api/2.
 export const jiraDownload = async (url) => {
-  const res = await fetch(url, {headers: {Authorization: AUTH_HEADER}});
+  const res = await fetchHeaders(url, {headers: {Authorization: AUTH_HEADER}});
   if (!res.ok) throw new Error(`Jira attachment ${res.status}`);
   return Buffer.from(await res.arrayBuffer()).toString("base64");
 };
 
-// Uploads are multipart, which jiraRequest's JSON headers cannot carry; fetch
-// sets the boundary Content-Type itself. Jira Server rejects an attachment
-// POST without X-Atlassian-Token (XSRF check). Not retried: it is a POST.
+// Jira Server rejects an attachment POST without X-Atlassian-Token (XSRF check).
 export const jiraUpload = async (ticketId, filename, bytes) => {
   const form = new FormData();
   form.append("file", new Blob([bytes]), filename);

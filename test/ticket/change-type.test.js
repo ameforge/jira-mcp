@@ -7,10 +7,7 @@ const page = (action, fields, submit, text = "") =>
   `<form action="${action}" method="post" name="jiraform">${text}${fields}` +
   `<input type="submit" name="${submit}" value="${submit}"></form>`;
 
-// Jira's Convert Sub-task to Issue wizard, trimmed to what the real pages
-// carry: a type select on step 1, then the confirm page whose Finish ends on
-// the issue page. `confirmText` is the confirm page's summary table;
-// `afterType` replaces the page Jira answers the type step with.
+// Jira's Convert Sub-task to Issue wizard, trimmed to what the real pages carry.
 const convertWizard = (confirmText = "Type Sub-task Task", afterType) =>
   fakeForms({
     "ConvertSubTask.jspa": {
@@ -35,8 +32,6 @@ const convertWizard = (confirmText = "Type Sub-task Task", afterType) =>
     },
   });
 
-// The ticket is a Sub-task until the wizard's Finish has been posted. PUT
-// bodies land in `puts`.
 const subtaskJira = (sent, puts) => async (method, path, body) => {
   if (method === "PUT") {
     puts.push(body);
@@ -74,8 +69,7 @@ test("update_ticket converts a sub-task to a standard type through Jira's wizard
   const result = await convertToTask(wizard, puts, {summary: "New title"});
 
   assert.equal(result.content[0].text, "PROJ-1 updated successfully");
-  // REST rejects or ignores a sub-task conversion, so only the other fields
-  // go over REST.
+  // REST rejects or ignores a sub-task conversion, so only the other fields go over REST.
   assert.deepEqual(puts, [{fields: {summary: "New title"}}]);
   // One session: the wizard's atl_token is tied to it.
   assert.deepEqual(
@@ -155,8 +149,7 @@ test("update_ticket finishes a type change that deletes field values only with a
 });
 
 test("update_ticket stops when the new workflow lacks the ticket's status", async () => {
-  // Field name and options as Jira renders the step for a status the new
-  // workflow does not have; no option is pre-selected.
+  // Markup as Jira renders this step for a status the new workflow lacks; no option is pre-selected.
   const wizard = convertWizard(
     undefined,
     page(

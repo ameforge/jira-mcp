@@ -1,7 +1,4 @@
-// Jira rejects an unknown issue type without naming the valid
-// ones, so the caller guesses again ("QA-Subtask", "QA Subtask", ...). On that
-// error, fetch the valid names and append them. Any other error, or a failed
-// lookup, rethrows Jira's original message untouched.
+// Jira rejects an unknown issue type without naming the valid ones, so the caller would keep guessing.
 const withValidNames = async (call, pattern, label, names) => {
   try {
     return await call();
@@ -15,7 +12,6 @@ const withValidNames = async (call, pattern, label, names) => {
   }
 };
 
-// A project scopes its issue types; without one (a JQL search), list them all.
 export const withIssueTypes = (call, jira, project) =>
   // JQL: "... for the field 'issuetype'" (or 'type'); create/update: {"issuetype":"..."}.
   withValidNames(

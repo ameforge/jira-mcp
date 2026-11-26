@@ -19,8 +19,7 @@ export const registerGenerateReleaseNotes = (server, jiraRequest) => {
       }),
     },
     async ({fix_version, project}, jira) => {
-      // Status names differ per workflow, and JQL rejects the whole query (400)
-      // if one named status does not exist, so match the category instead.
+      // Status names differ per workflow and JQL fails (400) on an unknown one, so match the category.
       let jql = `fixVersion = "${fix_version}" AND statusCategory = Done`;
       if (project) jql += ` AND project = ${project}`;
       jql += " ORDER BY issuetype ASC";
@@ -31,8 +30,7 @@ export const registerGenerateReleaseNotes = (server, jiraRequest) => {
         maxResults: "200",
       });
       const data = await jira("GET", `/search?${params}`);
-      // The Done category also holds work that never shipped. Filtered here,
-      // not in JQL, for the same reason as above.
+      // The Done category also holds work that never shipped; filtered here, not in JQL, for the same 400.
       // ponytail: name heuristic; list excluded statuses in config if it misses
       const issues = (data.issues || []).filter(
         (i) => !NOT_SHIPPED.test(i.fields.status?.name || ""),
@@ -54,7 +52,7 @@ export const registerGenerateReleaseNotes = (server, jiraRequest) => {
 
       const fmt = (issues) =>
         issues.map((i) => `- ${i.key}: ${i.fields.summary}`).join("\n");
-      const sections = [`# Release Notes — ${fix_version}\n`];
+      const sections = [`# Release Notes: ${fix_version}\n`];
       if (data.total > data.issues.length) {
         sections.push(
           `Incomplete: only the first ${data.issues.length} of ${data.total} matching issues were read.`,

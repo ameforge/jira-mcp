@@ -58,14 +58,10 @@ export const registerSearchTickets = (server, jiraRequest) => {
         Status: f.status?.name,
         Summary: f.summary,
       }));
-      // The caller pays tokens per cell, so a column earns its place only if it
-      // says something per row. Empty everywhere (no due dates on the whole
-      // result) is dropped; identical everywhere (searching one status) is
-      // stated once above the table instead of repeated on every row.
+      // The caller pays tokens per cell: drop columns empty on every row, state identical ones once.
       const collapsible = COLUMNS.filter((c) => c !== "KEY" && c !== "Summary");
       const values = (c) => rows.map((r) => r[c]).filter(Boolean);
-      // "All: X" must hold for every row, so a column filled on only some rows
-      // never counts as constant no matter how uniform those values are.
+      // "All: X" must hold for every row, so a column filled on only some rows never counts as constant.
       const constant =
         rows.length >= 3
           ? collapsible.filter(
@@ -80,10 +76,7 @@ export const registerSearchTickets = (server, jiraRequest) => {
       );
 
       const line = (cells) => cells.join(" | ");
-      // A missing column would otherwise be ambiguous — "no ticket has a due
-      // date" reads the same as "this tool can't see due dates", and a caller
-      // resolving that guess with one get_ticket per row costs far more than
-      // naming the columns here does.
+      // Name dropped columns, or "no due dates" reads as "can't see due dates" and costs a get_ticket per row.
       const notes = [
         constant.length &&
           `All: ${constant.map((c) => `${c}=${rows[0][c]}`).join(", ")}`,

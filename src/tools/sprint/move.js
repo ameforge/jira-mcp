@@ -3,8 +3,6 @@ import {defineTool} from "../../define-tool.js";
 
 const AGILE = "/rest/agile/1.0";
 
-// Every page of an Agile API list. The first request keeps the plain path;
-// later ones add startAt until the page says isLast.
 const allPages = async (jira, path) => {
   const values = [];
   for (let url = path; url; ) {
@@ -19,9 +17,7 @@ const allPages = async (jira, path) => {
   return values;
 };
 
-// Callers know sprints by name, the Agile API only by ID. Collect the active
-// and future sprints of the scrum boards of the tickets' project; kanban
-// boards have no sprints and reject the sprint listing.
+// Kanban boards have no sprints and reject the sprint listing, so only scrum boards are read.
 export const openSprints = async (jira, project) => {
   const boards = await allPages(
     jira,

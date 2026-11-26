@@ -1,10 +1,7 @@
 import {z} from "zod";
 import {defineTool} from "../../define-tool.js";
 
-// REST can edit time, start and comment only; WorklogPRO Type of Work and
-// Type of Activity are set through its web form, which has no edit path here.
-// A REST edit keeps both attributes (checked in the WorklogPRO UI); REST
-// cannot read them back to verify.
+// A REST edit keeps WorklogPRO Type of Work/Activity (checked in its UI) but cannot set or read them.
 export const registerUpdateWorklog = (server, jiraRequest) => {
   defineTool(
     server,

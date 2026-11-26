@@ -2,8 +2,7 @@ import {z} from "zod";
 import {defineTool} from "../../define-tool.js";
 import {worklogDates, worklogTypes} from "./worklog-pro.js";
 
-// Local "YYYY-MM-DD HH:mm" in the WorklogPRO timezone, the same clock log_work
-// writes with, so a day here matches the day the worklog was logged for.
+// The WorklogPRO clock log_work writes with, so a day here matches the day the worklog was logged for.
 const localStart = (iso) => worklogDates(iso).startDate;
 
 const shiftDay = (date, days) =>
@@ -47,8 +46,7 @@ export const registerListWorklogs = (server, jiraRequest) => {
       const isAuthor = user
         ? (a) => a?.name?.toLowerCase() === user.toLowerCase()
         : (a) => a?.key === me.key;
-      // JQL worklogDate follows the Jira profile timezone, which may differ
-      // from JIRA_TIMEZONE, so search a day wider and filter below.
+      // JQL worklogDate follows the Jira profile timezone, not JIRA_TIMEZONE, so search a day wider.
       // shortcut: one page of 100 issues, page through if a day ever spans more.
       const params = new URLSearchParams({
         fields: "summary",

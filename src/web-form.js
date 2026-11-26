@@ -1,8 +1,6 @@
 import {AUTH_HEADER, JIRA_HOST, onTimeout, TIMEOUT_MS} from "./jira-client.js";
 
-// Field errors are class="error"; the banner is class="aui-message
-// aui-message-error" with its text in nested tags, so each block is read up to
-// its balanced closing tag rather than to the first "<".
+// The aui-message-error banner nests its text in tags, so a block is read to its balanced closing tag.
 const ERROR_OPEN =
   /<(\w+)[^>]*\bclass="(?:[^"]*\s)?(?:aui-message-)?error(?:\s[^"]*)?"[^>]*>/gi;
 const textOf = (html) =>
@@ -11,12 +9,11 @@ const textOf = (html) =>
     .replace(/\s+/g, " ")
     .trim();
 
-/** Every error a form page shows, joined with "; ", or "" when it shows none. */
 export const formErrors = (html) => {
   const reasons = new Set();
   let end = 0;
   for (const open of html.matchAll(ERROR_OPEN)) {
-    if (open.index < end) continue; // nested in a block already read
+    if (open.index < end) continue;
     const start = open.index + open[0].length;
     const tag = new RegExp(`<(/?)${open[1]}\\b[^>]*>`, "gi");
     tag.lastIndex = start;
@@ -35,8 +32,7 @@ export const formErrors = (html) => {
   return [...reasons].join("; ");
 };
 
-// Classic forms carry the token in a hidden input; WorklogPRO's dialog only in
-// a URL (atl_token=...), kept as sent since it goes back into a URL.
+// WorklogPRO's dialog has atl_token only in a URL, so it is kept encoded as sent: it goes back into one.
 const readToken = (html) =>
   html.match(/name="atl_token"\s+value="([^"]+)"/)?.[1] ??
   html.match(/atl_token=([A-Za-z0-9%_-]+)/)?.[1];
@@ -45,30 +41,24 @@ const MAX_HOPS = 10;
 
 /**
  * @typedef {object} FormPage
- * @property {boolean} done redirected to the issue page, which is how a classic form reports success; that page is not loaded
- * @property {boolean} redirected Jira answered with at least one redirect
- * @property {boolean} ok done, or the last answer was 2xx
- * @property {number} status HTTP status of the last answer
- * @property {string} url absolute URL of the last answer, for resolving a form's relative action
- * @property {string} html "" when done
- * @property {string} errors what formErrors reads from html
- * @property {string} [token] the page's atl_token
+ * @property {boolean} done a classic form reports success by redirecting to the issue page
+ * @property {boolean} redirected
+ * @property {boolean} ok
+ * @property {number} status
+ * @property {string} url
+ * @property {string} html
+ * @property {string} errors
+ * @property {string} [token]
  */
 
 /**
- * One Jira web session for a classic /secure form flow. Its atl_token is tied
- * to the session, and Basic Auth opens a fresh session per request, so every
- * request of one flow must carry the cookies the earlier ones set; redirects
- * are followed here by hand for the same reason. A path is relative to the
- * Jira host; an absolute URL (a resolved form action) is used as is.
+ * atl_token is tied to a session and Basic Auth opens one per request, so cookies and redirects go by hand.
  * @returns {{open: (path: string) => Promise<FormPage>, submit: (path: string, fields: any) => Promise<FormPage>}}
  */
 export const formSession = (host = JIRA_HOST, auth = AUTH_HEADER) => {
   const cookies = new Map();
-  // A submit without fields still POSTs: body "" means POST, undefined GET.
   const send = async (url, body) => {
-    // Credentials and session cookies go to Jira only, never to wherever a
-    // redirect or a form action points (an SSO page, another host).
+    // Credentials and cookies must never reach a redirect or form action off JIRA_HOST (an SSO page).
     const origin = new URL(url).origin;
     if (origin !== new URL(host).origin) {
       throw new Error(

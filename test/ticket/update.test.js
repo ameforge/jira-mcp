@@ -55,16 +55,12 @@ test("update_ticket reports Jira's silent rejection of a Sub-task parent change"
   assert.match(result.content[0].text, /pass issue_type with a sub-task type/);
 });
 
-// Scripts Jira's Move > Change Parent form: the parent form carries the
-// token, and the submit answers with `submit`.
 const moveForm = (submit = {done: true, redirected: true, status: 302}) =>
   fakeForms({
     "MoveSubTaskParent!default": {token: "TOK1"},
     "MoveSubTaskParent.jspa": submit,
   });
 
-// The sub-task reports PROJ-5 as its parent on the first read, then `after`.
-// PUT bodies land in `puts`.
 const reparentJira = (after, puts = []) => {
   let parent = "PROJ-5";
   return async (method, _path, body) => {

@@ -1,8 +1,7 @@
 import {z} from "zod";
 import {defineTool} from "../../define-tool.js";
 
-// A link type is addressable by its name ("Bugs") or by either verb ("is bug
-// of", "has bug"), since callers usually say the relation, not the type.
+// Match a link type by name or by either verb: callers usually say the relation ("has bug"), not the type.
 export const namesOf = (type) =>
   [type.name, type.inward, type.outward].map((n) => n.toLowerCase());
 

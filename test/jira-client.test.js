@@ -2,10 +2,7 @@ import assert from "node:assert/strict";
 import {test} from "node:test";
 import {JIRA_HOST, jiraRequest} from "../src/jira-client.js";
 
-// Retries, timeouts and empty bodies are tested once in packages/request.
-// Here: which methods Jira replays, read through the timeout message that
-// uses the same list. A 500 or a timeout may come after a write went through:
-// a replayed POST duplicates it, a replayed DELETE turns a done delete into a 404.
+// A replayed POST duplicates a write that went through; a replayed DELETE turns it into a 404.
 for (const [method, says] of [
   [
     "POST",

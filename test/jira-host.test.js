@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
 
-// MCP client configs often carry a trailing slash or literal quotes; Jira
-// answers "//rest/..." with 404 "null for uri". Set before the module reads it.
+// Set before the module reads it at import.
 process.env.JIRA_HOST = ' "https://jira.test/" ';
 const {jiraRequest} = await import("../src/jira-client.js");
 

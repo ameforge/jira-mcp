@@ -4,8 +4,6 @@ import {formSession} from "../src/web-form.js";
 
 const HOST = "https://jira.test";
 
-// Answers each fetch with the reply whose key the URL contains and records
-// every request with the headers it carried.
 const stubFetch = (replies) => {
   const sent = [];
   globalThis.fetch = async (url, init = {}) => {
@@ -69,7 +67,6 @@ test("a form session follows redirects in the session and stops at the issue pag
     sent.map((s) => [s.method, s.url, s.headers.Cookie]),
     [
       ["POST", `${HOST}/secure/Finish.jspa`, undefined],
-      // The hop keeps the cookie the redirect itself set, and is a GET.
       ["GET", `${HOST}/secure/Next.jspa`, "JSESSIONID=s2"],
     ],
   );

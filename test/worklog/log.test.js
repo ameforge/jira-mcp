@@ -7,8 +7,6 @@ const FORM_HTML =
   '<form action="x?atl_token=TOK123"><input name="startDateJS" value="27/Sep/26 9:00 AM">' +
   '<input name="startDate" value="2026-09-27 09:00"></form>';
 
-// Scripts the WorklogPRO dialog (`form`) and its submit (`submit`) on top of
-// a dialog that loads with its token.
 const worklogForms = ({form = {}, submit = {}} = {}) =>
   fakeForms({
     "!default.jspa": {html: FORM_HTML, token: "TOK123", ...form},
@@ -66,8 +64,7 @@ test("log_work does not replay a failed form submit over REST", async () => {
   assert.match(content[0].text, /do not retry.*Work Log tab of PROJ-1/);
 });
 
-// WorklogPRO answers a rejected submit with HTTP 200 and the reasons in the
-// page; the caller needs every reason and to know nothing was logged.
+// WorklogPRO answers a rejected submit with HTTP 200 and the reasons in the page.
 test("log_work reports the form's errors", async () => {
   const wp = worklogForms({
     submit: {errors: "You must indicate the time spent working."},
@@ -110,7 +107,6 @@ test("log_work without attributes logs over plain REST", async () => {
   assert.deepEqual(requests, [
     ["POST", "/issue/PROJ-1/worklog", {timeSpent: "2h"}],
   ]);
-  // The form flow stays untouched on the REST path.
   assert.deepEqual(wp.sent, []);
   assert.equal(content[0].text, "Logged 2h on PROJ-1 (worklog id: 777)");
 });

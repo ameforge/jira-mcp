@@ -8,7 +8,6 @@ process.env.JIRA_TIMEZONE = "Asia/Ho_Chi_Minh";
 
 const TYPES_PATH = "/rest/com.deniz.jira.worklog/1.0/worklog/";
 
-// types: worklog ID to its WorklogPRO attributes, or an Error to throw.
 const run = async (args, worklogs, types = {}) => {
   const server = fakeServer();
   const requests = [];

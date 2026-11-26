@@ -11,7 +11,6 @@ test("get_ticket formats issue fields without hitting live Jira", async () => {
   const server = fakeServer();
   const fakeJira = async (method, path) => {
     assert.equal(method, "GET");
-    // Only the fields the tool prints; comments stay out unless asked for.
     assert.equal(path, `/issue/PROJ-1?fields=${FIELDS}`);
     return {
       fields: {
@@ -290,8 +289,7 @@ test("get_ticket lists worklogs with their IDs from the worklog endpoint", async
     "/rest/com.deniz.jira.worklog/1.0/worklog/20001",
   ]);
   assert.match(text, /Worklogs \(1 most recent of 3\):/);
-  // The ID is what update_worklog and delete_worklog take; the types are the
-  // aliases log_work takes.
+  // update_worklog and delete_worklog take the ID; the types are the aliases log_work takes.
   assert.match(
     text,
     /#20001 \[2026-07-02\] Alice 2h \[code\/review\]: pairing/,

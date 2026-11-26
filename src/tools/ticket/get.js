@@ -4,24 +4,17 @@ import {jiraDownload} from "../../jira-client.js";
 import {START_DATE_FIELD} from "../../ticket-fields.js";
 import {worklogTypes} from "../worklog/worklog-pro.js";
 
-// Formats MCP clients can render as images; SVG and the rest stay name-only.
+// Only formats MCP clients can render as images; SVG and the rest stay name-only.
 const IMAGE_TYPES = new Set([
   "image/gif",
   "image/jpeg",
   "image/png",
   "image/webp",
 ]);
-// Each image costs the caller far more tokens than the whole text response.
-// Claude's vision limits are on base64 size: 5 MB per image on Bedrock and
-// Google Cloud (10 MB on the Claude API), 32 MB per request, and the images
-// are resent on every later turn. So budget base64 bytes, well under those.
-// No resizing: the API downscales oversized images itself, which already
-// caps their token cost.
-// The caller can raise the count up to IMAGE_LIMIT_MAX; the byte budget
-// below still applies, so more images never means a bigger request. Max 20:
-// past 20 images in one request Claude applies a stricter per-image limit.
 const IMAGE_LIMIT = 5;
+// Past 20 images in one request, Claude applies a stricter per-image limit.
 export const IMAGE_LIMIT_MAX = 20;
+// Claude caps base64 at 5 MB per image on Bedrock and Google Cloud; images resend on every later turn.
 const IMAGE_MAX_B64 = 5_000_000;
 const IMAGES_TOTAL_B64 = 10_000_000;
 const b64Size = (bytes) => Math.ceil(bytes / 3) * 4;
@@ -31,8 +24,7 @@ const mb = (bytes) => `${(bytes / 1e6).toFixed(1)} MB`;
 export const fetchImages = async (attachments, download, limit) => {
   const images = attachments.filter((a) => IMAGE_TYPES.has(a.mimeType));
   const picked = [];
-  // Name each image skipped for size, so the caller knows which screenshot
-  // it has not seen and that raising image_limit will not bring it back.
+  // Named so the caller knows which screenshot it missed and that raising image_limit won't bring it back.
   const skipped = [];
   let overLimit = 0;
   let budget = IMAGES_TOTAL_B64;
@@ -66,9 +58,7 @@ export const fetchImages = async (attachments, download, limit) => {
   return {blocks, notes};
 };
 
-// A busy ticket can carry hundreds of comments; returning them all would cost
-// the caller more tokens than the rest of the server put together. The newest
-// are the ones that answer questions, and the header admits what was cut.
+// A busy ticket carries hundreds of comments; the newest are the ones that answer questions.
 const COMMENT_LIMIT = 20;
 
 const formatComments = ({comments = [], total = 0} = {}) => {
@@ -87,7 +77,7 @@ const formatComments = ({comments = [], total = 0} = {}) => {
   return `Comments (${count}):\n${body}`;
 };
 
-// Same cap as comments; the newest worklogs are the ones people come to fix.
+// The newest worklogs are the ones people come to fix.
 const formatWorklogs = async (jira, {worklogs = [], total = 0} = {}) => {
   if (!worklogs.length) return "Worklogs: None";
   const shown = worklogs.slice(-COMMENT_LIMIT);
@@ -154,8 +144,7 @@ export const registerGetTicket = (
       },
       jira,
     ) => {
-      // Without ?fields= Jira returns every field, inline comments and
-      // worklogs included; ask only for what this tool prints.
+      // Without ?fields= Jira returns every field, inline comments and worklogs included.
       const fields = [
         "summary,status,assignee,reporter,priority,duedate,timetracking",
         `labels,description,subtasks,attachment,${START_DATE_FIELD}`,
@@ -168,15 +157,13 @@ export const registerGetTicket = (
       const subtasks = (f.subtasks || [])
         .map((s) => `  - ${s.key}: ${s.fields.summary}`)
         .join("\n");
-      // Unset fields are omitted rather than printed as "Not set" — the caller
-      // is an LLM paying tokens for every line.
+      // Unset fields are omitted, not printed as "Not set": the caller pays tokens for every line.
       const line = (label, value) => (value ? `${label}: ${value}` : null);
       const attachments = f.attachment || [];
       const images = include_images
         ? await fetchImages(attachments, download, image_limit ?? IMAGE_LIMIT)
         : {blocks: [], notes: []};
-      // The issue's inline worklog field is capped by Jira and may drop the
-      // newest entries, so read the full list from its own endpoint.
+      // Jira caps the inline worklog field and may drop the newest, so read the list from its endpoint.
       const worklogs = include_worklogs
         ? await formatWorklogs(
             jira,
